@@ -66,13 +66,34 @@ export default function PowerClient({ initialEntries }: Props) {
     return t
   }, [entries])
 
-  // Line chart: running total per entry
+  const MONTH_ORDER: Record<string, number> = {
+    enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6,
+    julio: 7, agosto: 8, setiembre: 9, septiembre: 9, octubre: 10, noviembre: 11, diciembre: 12,
+  }
+
+  // Line chart: group by month+year, one point per month, running total
   const chartData = useMemo(() => {
-    let running = 0
-    return entries.map((e, i) => {
+    // Group entries by "Mes Año" key
+    const grouped: Record<string, number> = {}
+    for (const e of entries) {
+      const monthNum = MONTH_ORDER[e.entry_month?.toLowerCase() ?? ''] ?? 0
+      const year = e.entry_year ?? 0
+      const key = `${year}-${String(monthNum).padStart(2, '0')}`
       const rowTotal = POWER_COLS.reduce((s, c) => s + ((e[c.key] as number | null) ?? 0), 0)
-      running += rowTotal
-      return { label: `${e.entry_month ?? ''} ${e.entry_year ?? ''}`.trim() || `#${i + 1}`, total: Math.round(running * 100) / 100 }
+      grouped[key] = (grouped[key] ?? 0) + rowTotal
+    }
+    // Sort keys chronologically
+    const sortedKeys = Object.keys(grouped).sort()
+    let running = 0
+    return sortedKeys.map(key => {
+      running += grouped[key]
+      const [year, monthPad] = key.split('-')
+      const monthNum = parseInt(monthPad)
+      const monthName = Object.entries(MONTH_ORDER).find(([, v]) => v === monthNum)?.[0] ?? key
+      return {
+        label: `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${year}`,
+        total: Math.round(running * 100) / 100,
+      }
     })
   }, [entries])
 
@@ -138,7 +159,7 @@ export default function PowerClient({ initialEntries }: Props) {
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <h2 className="font-semibold text-gray-800 text-sm mb-4">Evolución del saldo Power</h2>
           <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={chartData.slice(-24)}>
+            <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
               <XAxis dataKey="label" tick={{ fontSize: 9 }} />
               <YAxis tick={{ fontSize: 10 }} />

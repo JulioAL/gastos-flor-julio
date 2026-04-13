@@ -363,6 +363,15 @@ async function migrateGastos(wb) {
     // Fallback: "costo dólares" if no soles column
     const costoIdx = costoSolesIdx !== -1 ? costoSolesIdx : headers.findIndex(h => String(h).toLowerCase().includes('costo'))
 
+    // Fallback date = the tab name itself if it's "DD-MM-YYYY", else first day of the tab's month
+    const ddmmyyyy = tab.match(/^(\d{2})-(\d{2})-(\d{4})$/)
+    const tabFallbackDate = ddmmyyyy
+      ? `${ddmmyyyy[3]}-${ddmmyyyy[2]}-${ddmmyyyy[1]}`  // → "2026-01-03"
+      : (() => {
+          const p = parseMonthFromTabName(tab)
+          return p ? `${p.year}-${String(p.month).padStart(2, '0')}-01` : new Date().toISOString().split('T')[0]
+        })()
+
     let lastDate = null
 
     for (let r = 1; r < rows.length; r++) {
@@ -378,7 +387,7 @@ async function migrateGastos(wb) {
 
       const entry = {
         user_id: JULIO_USER_ID,
-        date: lastDate ?? new Date().toISOString().split('T')[0],
+        date: lastDate ?? tabFallbackDate,
         description,
         tab_name: tab,
         year: 2026,
