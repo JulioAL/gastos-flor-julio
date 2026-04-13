@@ -1,0 +1,48 @@
+Mi esposa (Flor) y yo (Julio) rastreamos nuestros gastos en algunos archivos Excek, estos archivos son de Google Sheets.
+PRESUPUESTO:
+En uno de los archivos rastreamos juntos nuestro presupuesto: https://docs.google.com/spreadsheets/d/1tC0pG2q-jZcFTEC_39pbF7Gu5Mo_eu0X03qBqSnM3fM/edit?gid=1366505081#gid=1366505081 si no puedes leer el Google Sheets aquí el archivo en excel presupuesto_flor_y_julio.xlsx
+En este archivo tenemos: 
+cada mes agregamos una pestaña en la que rastreamos todos los ingresos y salidas programadas de nuestro presupuesto
+    - ingresos como sueldo de Flor, sueldo de Julio y otros ingresos que no siempre los contamos en el presupuesto del mes
+    - tenemos listados los gastos de cada cosa que es necesaria para nuestro mes, como mantenimiento del dpto, energía eléctrica, cable e internet, teléfonos celulares, eléctrica, entretenimiento, etc
+    - En una sección también tenemos desglosado los gastos de entretenimiento 
+    - Las repsonsabilidades de pago:
+        - Flor: luz, internet, ofrenda
+        - Julio: mantenimiento, alquiler 
+    - Asimismo tenemos otra tabla en la que nos hacemos las transferencias a cada uno con los montos que debemos pagas o nos quedaremos: 
+        - "Otros (Julio y Flor)" es para nuestros gastos personales del mes
+        - tenemos cuentas en el banco scotiabank:
+            - Casita: para gatos del hogar en general que incluyen: comida, limpieza del hogar, mentenimiento, energía eléctrica, cable e internet, teléfonos celulares
+            - power: que es donde tenemos todos nuestros ahorros, es una cuenta que nos da buen interés mensual, pero aquí mismo guardamos gastos para salud en el mes, seguro del carro lo tenemos ahí hasta pagar cada mes, ahorroa para bebé, ahorroa para comprar casa, alguna emergencia, el sobrante de lo que queda de nuestros ingresos
+            - Lmpieza y regalos: aquí llevamos el pago para una persona que hace la lmipieza de la casa, regalos del mes 100 por persona de la familia
+            - Entretenimiento: gastos como el youtube (o yutu), netflix, servicios en general que se consumen a traves de internet
+            - Flor y Julio: gastos para salidas y compras varias del mes 
+            - Navidad: mensualmente derivcamos a esta cuenta 50 soles para hacer regalos a la familia en Navidad
+            - Gaso: aquí derivamos el dinero para la gasolina mensualmente
+también tenemos una pestaña llamada "Cuentasbanco v2" en la cual trackeamos todos los ingresos y egresos de nuestra cuenta más importante: La Power.
+
+Aparte cada uno tiene un archivo excel en donde trackeamos nuestros gastos tanto personales como para el hogar:
+    - este es mi file: https://docs.google.com/spreadsheets/d/1dtYthkmOAFz3PIaGx9JK0NXe55WdDdJDs4Wc6B0Uaas/edit?gid=1695262121#gid=1695262121 sino aquí el excel gastos_julio.xlsx
+    - Flor tiene su propio file al que no tengo acceso
+    - en general allí anotamos todos nuestros gastos tanto personales como:
+        - salidas solos, con amigos
+        - pero también las compras para el hogar con nuestras tarjetas de crédito que luego nos devolvemos de acuerdo a lo que hemos separado para cada categoría en el excel de presupuesto
+            - estos gastos del hogas los clasificamos como gastos de las cuentas desritas arriba: casita, power, limpieza y regalos, flory julio, etc, eso puedes verlo de en qué columna se puso el gasto, a veces es la suma de dos columnas.
+            - si un gasto está en la columna julio quiere decir que es un gasto mío, si un gasto está en parte flor, quiere decir que Flor me debe eso.
+            - La columna Salidas pertenece a FlorYJulio 
+    - este archivo tiene nuevas pestañas cada vez que nos sentamos a hacer cuentas y nos repartimos los gastos de casa de las cuentas que heos hecho en presupuesto
+
+Quiero ver en qué puedo manejar todo este sistema, ya que nuestras cuentas a veces se hacen un poco complicadas, en cuento a la reparticion y demás.
+El sistema que tenemos funciona, pero quiero que me ayudes a mejorarlo. Quizá puda tener una aplicación en iOS solo para mí y Flor, en la que podamos tener todo centralizado. Que el excel o db de presupuesto tengamos acceso ambos, pero a los gastos personales solo cada uno tenga acceso. O qué otro tipo de sistema me recomiendas? O recominedas seguir con el sistema actual?
+
+También quiero detalle en los gastos de cada gasto personal que cada gsto pueda ser editable luego de ser ingresado, cada gasto debe ser identificado como gasto personal o como gasto del hogar con su respectiva cuenta a la que va el gasto
+Quiero un dashborad y ver en qué se va más el dinero.
+Para los gastos personales y presupuesto solo toma en cuenta los gastos del 2026. Para gastos toma las pestañas que tenan como nombre 2026 en ella. Para presupuesto lo mismo.
+Para la cuenta Power sí toma en cuenta todo lo que está en esa pestaña, y quiero que cada columna la muestres con su total actual y que pueda ingresar más entradas para cada columna
+
+En caso de decantarnos por una aplicación sería bueno que por pestañas:
+    - resumen de gastos por mes de las cuentas
+    - gastos personales a los que solo yo tenga acceso, que los gastos se resten de las cuentas que se mencionan en presupuesto
+    - dashboards personales para ver en qué se van los gastos
+    - pestaña con las cuentas que mencionamos arriba en el presupuesto, que sea editable
+    - pestaña exclusiva oara la power

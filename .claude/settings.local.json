@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest gastos-app --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-turbopack)",
+      "Bash(npm --version)",
+      "Bash(export PATH=\"$PATH:/usr/local/bin:/opt/homebrew/bin:/usr/bin\")",
+      "Read(//opt/homebrew/bin/**)",
+      "Read(//Users/jalvalinares/.nvm/versions/**)",
+      "Read(//usr/local/bin/**)",
+      "Read(//Users/jalvalinares/projects/**)",
+      "Bash(npx create-next-app@latest gastos-app --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-turbopack --yes)",
+      "Bash(npm install:*)",
+      "Bash(npm audit:*)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(k,v.get\\('severity'\\),v.get\\('title'\\)\\) for k,v in d.get\\('vulnerabilities',{}\\).items\\(\\)]\")",
+      "Bash(npm uninstall:*)",
+      "Bash(npm run:*)",
+      "Bash(pbcopy)",
+      "Bash(node -e ':*)",
+      "Bash(python3)",
+      "Bash(node scripts/migrar-excel.mjs)"
+    ]
+  }
+}
