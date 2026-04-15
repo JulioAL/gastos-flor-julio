@@ -3,22 +3,8 @@
 import { useState, useMemo, useEffect } from 'react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { createClient } from '@/lib/supabase/client'
+import { POWER_COLS } from '@/lib/utils/accounts'
 import type { PowerAccountEntry } from '@/lib/supabase/types'
-
-const POWER_COLS: { key: keyof PowerAccountEntry; label: string }[] = [
-  { key: 'carro',             label: 'Carro' },
-  { key: 'ahorro_casa',       label: 'Ahorro Casa' },
-  { key: 'ahorro_extra',      label: 'Ahorro extra' },
-  { key: 'sueldo',            label: 'Sueldo' },
-  { key: 'cts',               label: 'CTS' },
-  { key: 'intereses_ganados', label: 'Intereses ganados' },
-  { key: 'gratificaciones',   label: 'Gratificaciones' },
-  { key: 'afp',               label: 'AFP' },
-  { key: 'emergencia',        label: 'Emergencia' },
-  { key: 'jf_baby',           label: 'JF baby' },
-  { key: 'bonos_utilidades',  label: 'Bonos / Utilidades' },
-  { key: 'salud',             label: 'Salud' },
-]
 
 const MONTHS = [
   'Enero','Febrero','Marzo','Abril','Mayo','Junio',
@@ -45,6 +31,9 @@ export default function PowerClient({ initialEntries }: Props) {
   const [filterYear, setFilterYear] = useState<number>(2026)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [chartCol, setChartCol] = useState<string>('total')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [selectMode, setSelectMode] = useState(false)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
 
   // All available years for the selector
   const years = useMemo(() =>
@@ -62,7 +51,7 @@ export default function PowerClient({ initialEntries }: Props) {
   const totals = useMemo(() => {
     const t: Record<string, number> = {}
     for (const col of POWER_COLS) {
-      t[col.key] = entries.reduce((s, e) => s + ((e[col.key] as number | null) ?? 0), 0)
+      t[col.key] = entries.reduce((s, e) => s + (((e as Record<string, unknown>)[col.key] as number | null) ?? 0), 0)
     }
     return t
   }, [entries])
@@ -80,10 +69,11 @@ export default function PowerClient({ initialEntries }: Props) {
       const year = e.entry_year ?? 0
       const key = `${year}-${String(monthNum).padStart(2, '0')}`
       if (!grouped[key]) grouped[key] = {}
+      const eRec = e as Record<string, unknown>
       for (const c of POWER_COLS) {
-        grouped[key][c.key] = (grouped[key][c.key] ?? 0) + ((e[c.key] as number | null) ?? 0)
+        grouped[key][c.key] = (grouped[key][c.key] ?? 0) + ((eRec[c.key] as number | null) ?? 0)
       }
-      const rowTotal = POWER_COLS.reduce((s, c) => s + ((e[c.key] as number | null) ?? 0), 0)
+      const rowTotal = POWER_COLS.reduce((s, c) => s + ((eRec[c.key] as number | null) ?? 0), 0)
       grouped[key].total = (grouped[key].total ?? 0) + rowTotal
     }
     const sortedKeys = Object.keys(grouped).sort()
@@ -144,6 +134,33 @@ export default function PowerClient({ initialEntries }: Props) {
     await supabase.from('power_account_entries').delete().eq('id', confirmDeleteId)
     setEntries(prev => prev.filter(e => e.id !== confirmDeleteId))
     setConfirmDeleteId(null)
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === filteredEntries.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(filteredEntries.map(e => e.id)))
+    }
+  }
+
+  async function bulkDelete() {
+    if (!confirm(`¿Eliminar ${selectedIds.size} entrada${selectedIds.size !== 1 ? 's' : ''}? Esta acción no se puede deshacer.`)) return
+    setBulkDeleting(true)
+    const ids = Array.from(selectedIds)
+    await supabase.from('power_account_entries').delete().in('id', ids)
+    setEntries(prev => prev.filter(e => !selectedIds.has(e.id)))
+    setSelectedIds(new Set())
+    setSelectMode(false)
+    setBulkDeleting(false)
   }
 
   function ChartTooltip({ active, payload }: { active?: boolean; payload?: { payload: Record<string, number | string> }[] }) {
@@ -220,7 +237,7 @@ export default function PowerClient({ initialEntries }: Props) {
       {/* Full history table */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-x-auto">
         <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <h2 className="font-semibold text-gray-800 dark:text-gray-200 text-sm">Historial — {filteredEntries.length} entradas</h2>
             <select
               className="border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1 text-xs"
@@ -230,6 +247,24 @@ export default function PowerClient({ initialEntries }: Props) {
               <option value={0}>Todos los años</option>
               {years.map(y => <option key={y} value={y}>{y}</option>)}
             </select>
+            <button
+              onClick={() => { setSelectMode(m => !m); setSelectedIds(new Set()) }}
+              className={`text-xs px-3 py-1 rounded-lg border transition ${selectMode ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-400 text-indigo-700 dark:text-indigo-400' : 'border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+            >
+              {selectMode ? 'Cancelar selección' : 'Seleccionar'}
+            </button>
+            {selectMode && selectedIds.size > 0 && (
+              <button
+                onClick={bulkDelete}
+                disabled={bulkDeleting}
+                className="flex items-center gap-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold px-3 py-1 rounded-lg transition disabled:opacity-50"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                </svg>
+                {bulkDeleting ? 'Eliminando...' : `Eliminar ${selectedIds.size}`}
+              </button>
+            )}
           </div>
           <span className="text-sm font-bold text-indigo-700 dark:text-indigo-400">
             Total general (todo el historial): S/ {Object.values(totals).reduce((s, v) => s + v, 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
@@ -239,6 +274,15 @@ export default function PowerClient({ initialEntries }: Props) {
           <table className="text-xs min-w-max w-full">
             <thead className="sticky top-0 z-10">
               <tr className="bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700">
+                {selectMode && (
+                  <th className="px-3 py-2 sticky left-0 z-20 bg-gray-50 dark:bg-gray-900 w-10 min-w-[40px]">
+                    <button onClick={toggleSelectAll} className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition ${selectedIds.size === filteredEntries.length && filteredEntries.length > 0 ? 'bg-indigo-600 border-indigo-600' : 'border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-700'}`}>
+                      {selectedIds.size === filteredEntries.length && filteredEntries.length > 0
+                        ? <svg className="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                        : selectedIds.size > 0 ? <span className="w-2.5 h-0.5 bg-indigo-500 rounded"/> : null}
+                    </button>
+                  </th>
+                )}
                 <th className="text-left px-3 py-2 font-medium text-gray-500 dark:text-gray-400 sticky left-0 z-20 bg-gray-50 dark:bg-gray-900 w-12 min-w-[48px]">Año</th>
                 <th className="text-left px-3 py-2 font-medium text-gray-500 dark:text-gray-400 sticky left-12 z-20 bg-gray-50 dark:bg-gray-900 w-24 min-w-[96px]">Mes</th>
                 <th className="text-left px-3 py-2 font-medium text-gray-500 dark:text-gray-400 sticky left-36 z-20 bg-gray-50 dark:bg-gray-900 w-32 min-w-[128px] border-r border-gray-200 dark:border-gray-700">Detalle</th>
@@ -251,14 +295,27 @@ export default function PowerClient({ initialEntries }: Props) {
             </thead>
             <tbody>
               {filteredEntries.map(e => {
-                const rowTotal = POWER_COLS.reduce((s, c) => s + ((e[c.key] as number | null) ?? 0), 0)
+                const rowTotal = POWER_COLS.reduce((s, c) => s + (((e as Record<string, unknown>)[c.key] as number | null) ?? 0), 0)
+                const isSelected = selectedIds.has(e.id)
                 return (
-                  <tr key={e.id} className="border-b border-gray-50 dark:border-gray-700/50 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                  <tr
+                    key={e.id}
+                    className={`border-b border-gray-50 dark:border-gray-700/50 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/50 ${isSelected ? 'bg-indigo-50 dark:bg-indigo-900/20' : ''}`}
+                    onClick={selectMode ? () => toggleSelect(e.id) : undefined}
+                    style={selectMode ? { cursor: 'pointer' } : undefined}
+                  >
+                    {selectMode && (
+                      <td className="px-3 py-2 sticky left-0 z-10 bg-inherit w-10 min-w-[40px]">
+                        <span className={`w-6 h-6 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition ${isSelected ? 'bg-indigo-600 border-indigo-600' : 'border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-700'}`}>
+                          {isSelected && <svg className="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+                        </span>
+                      </td>
+                    )}
                     <td className="px-3 py-2 text-gray-600 dark:text-gray-400 sticky left-0 z-10 bg-white dark:bg-gray-800 w-12 min-w-[48px]">{e.entry_year}</td>
                     <td className="px-3 py-2 text-gray-600 dark:text-gray-400 sticky left-12 z-10 bg-white dark:bg-gray-800 w-24 min-w-[96px] whitespace-nowrap">{e.entry_month}</td>
                     <td className="px-3 py-2 text-gray-500 dark:text-gray-400 sticky left-36 z-10 bg-white dark:bg-gray-800 w-32 min-w-[128px] truncate border-r border-gray-200 dark:border-gray-700">{e.description}</td>
                     {POWER_COLS.map(c => {
-                      const val = e[c.key] as number | null
+                      const val = (e as Record<string, unknown>)[c.key] as number | null
                       return (
                         <td key={c.key} className={`px-3 py-2 text-right whitespace-nowrap ${val == null ? 'text-gray-200 dark:text-gray-700' : val >= 0 ? 'text-gray-800 dark:text-gray-200' : 'text-red-600 dark:text-red-400'}`}>
                           {val != null ? `S/ ${val.toLocaleString('es-PE', { minimumFractionDigits: 2 })}` : '-'}

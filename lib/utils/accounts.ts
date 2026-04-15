@@ -36,6 +36,22 @@ export const BUDGET_CATEGORIES = [
   { key: 'emergencia',                label: 'Emergencia',                      responsible: 'ambos', account: 'power' },
 ] as const
 
+// Power account sub-columns — shared between PowerClient and GastosClient
+export const POWER_COLS: { key: string; label: string }[] = [
+  { key: 'carro',             label: 'Carro' },
+  { key: 'ahorro_casa',       label: 'Ahorro Casa' },
+  { key: 'ahorro_extra',      label: 'Ahorro extra' },
+  { key: 'sueldo',            label: 'Sueldo' },
+  { key: 'cts',               label: 'CTS' },
+  { key: 'intereses_ganados', label: 'Intereses ganados' },
+  { key: 'gratificaciones',   label: 'Gratificaciones' },
+  { key: 'afp',               label: 'AFP' },
+  { key: 'emergencia',        label: 'Emergencia' },
+  { key: 'jf_baby',           label: 'JF baby' },
+  { key: 'bonos_utilidades',  label: 'Bonos / Utilidades' },
+  { key: 'salud',             label: 'Salud' },
+]
+
 export const MONTH_NAMES: Record<number, string> = {
   1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
   5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',

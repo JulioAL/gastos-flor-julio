@@ -7,9 +7,10 @@ import type { BudgetMonth, BudgetExpense, BudgetEntertainmentDetail, BudgetTrans
 
 interface Props {
   months: BudgetMonth[]
+  powerTotal: number
 }
 
-export default function CuentasClient({ months }: Props) {
+export default function CuentasClient({ months, powerTotal }: Props) {
   const supabase = createClient()
   const currentMonth = new Date().getMonth() + 1
   const defaultMonth = months.find(m => m.month === currentMonth) ?? months[months.length - 1]
@@ -115,7 +116,11 @@ export default function CuentasClient({ months }: Props) {
                 return (
                   <div key={acc.key} className="p-4">
                     <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{acc.label}</p>
-                    {isEditing ? (
+                    {acc.key === 'power' ? (
+                      <p className="text-lg font-bold text-gray-800 dark:text-gray-200 mt-1">
+                        S/ {powerTotal.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                      </p>
+                    ) : isEditing ? (
                       <div className="mt-1 flex items-center gap-1">
                         <span className="text-sm text-gray-400 dark:text-gray-500">S/</span>
                         <input

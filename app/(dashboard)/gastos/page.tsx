@@ -11,5 +11,8 @@ export default async function GastosPage() {
     .eq('year', 2026)
     .order('date', { ascending: false })
 
-  return <GastosClient initialExpenses={expenses ?? []} userId={user!.id} />
+  const userEmail = user!.email ?? ''
+  const isJulio = userEmail.toLowerCase().includes('julio')
+
+  return <GastosClient initialExpenses={expenses ?? []} userId={user!.id} isJulio={isJulio} />
 }
