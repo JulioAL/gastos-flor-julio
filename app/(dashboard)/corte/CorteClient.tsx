@@ -56,6 +56,7 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
   const [localPending, setLocalPending] = useState<PersonalExpense[]>(pendingExpenses)
   const [localCortes, setLocalCortes] = useState<CorteWithTotals[]>(cortes)
   const [expandedAccount, setExpandedAccount] = useState<string | null>(null)
+  const [showPersonal, setShowPersonal] = useState(false)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [corteNotes, setCorteNotes] = useState('')
   const [performing, setPerforming] = useState(false)
@@ -98,6 +99,8 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
   const hasPending = localPending.length > 0
   const hasToSettle = expensesToSettle.length > 0
   const totalAmount = Object.values(accountTotals).reduce((s, v) => s + v, 0)
+
+  const totalGastado = expensesToSettle.reduce((sum, e) => sum + ((e.julio as number | null) ?? 0), 0)
 
   const unclassifiedExpenses = expensesToSettle.filter(e => isUnclassified(e))
   const hasUnclassified = unclassifiedExpenses.length > 0
@@ -401,6 +404,101 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
                 </div>
               )
             })}
+
+            {/* Gastos personales card */}
+            {(() => {
+              const personalExpenses = expensesToSettle.filter(e => (e.julio ?? 0) > 0)
+              const isExpanded = expandedAccount === 'personal'
+              const isEmpty = totalGastado === 0
+              return (
+                <div className="col-span-2">
+                  <div className={`px-4 py-3 rounded-xl border transition ${
+                    isEmpty
+                      ? 'bg-gray-50 dark:bg-gray-800/30 border-gray-200 dark:border-gray-700 opacity-50'
+                      : isExpanded
+                        ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-700'
+                        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+                  }`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                        Gastos personales
+                      </p>
+                      <button
+                        onClick={() => {
+                          if (showPersonal && isExpanded) setExpandedAccount(null)
+                          setShowPersonal(v => !v)
+                        }}
+                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition p-0.5"
+                        title={showPersonal ? 'Ocultar' : 'Mostrar'}
+                      >
+                        {showPersonal ? (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                          </svg>
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => !isEmpty && showPersonal && setExpandedAccount(isExpanded ? null : 'personal')}
+                      disabled={isEmpty || !showPersonal}
+                      className="w-full text-left disabled:cursor-default"
+                    >
+                      <p className={`text-base font-bold ${isEmpty ? 'text-gray-400 dark:text-gray-600' : 'text-gray-900 dark:text-gray-100'}`}>
+                        {showPersonal ? `S/ ${fmt(totalGastado)}` : '••••••'}
+                      </p>
+                      {!isEmpty && (
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                          {personalExpenses.length} gasto{personalExpenses.length !== 1 ? 's' : ''} {isExpanded ? '▲' : '▼'}
+                        </p>
+                      )}
+                    </button>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="mt-2 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-gray-50 dark:bg-gray-800 text-xs text-gray-500 dark:text-gray-400">
+                            <th className="text-left px-3 py-2">Fecha</th>
+                            <th className="text-left px-3 py-2">Descripción</th>
+                            <th className="text-right px-3 py-2">Monto</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                          {personalExpenses.map(e => (
+                            <tr key={e.id} className="bg-white dark:bg-gray-900">
+                              <td className="px-3 py-2 text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                {formatDate(e.date)}
+                              </td>
+                              <td className="px-3 py-2 text-gray-900 dark:text-gray-100">
+                                {e.description}
+                              </td>
+                              <td className="px-3 py-2 text-right font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                                {showPersonal ? `S/ ${fmt(e.julio ?? 0)}` : '••••'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="bg-gray-50 dark:bg-gray-800 font-semibold text-sm">
+                            <td colSpan={2} className="px-3 py-2 text-gray-700 dark:text-gray-300">
+                              Total Gastos personales
+                            </td>
+                            <td className="px-3 py-2 text-right text-indigo-700 dark:text-indigo-400">
+                              {showPersonal ? `S/ ${fmt(totalGastado)}` : '••••••'}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
           </div>
         </div>
       )}

@@ -25,6 +25,18 @@ const HOGAR_CUENTAS = [
 
 type Clasificacion = '' | 'personal' | 'flor_me_debe' | 'hogar'
 
+interface Split {
+  id: string
+  clasificacion: Clasificacion
+  hogar_cuenta: string
+  power_subcuenta: string
+  monto: string
+}
+
+function makeSplit(): Split {
+  return { id: Math.random().toString(36).slice(2), clasificacion: '', hogar_cuenta: '', power_subcuenta: '', monto: '' }
+}
+
 // Hogar sin cuenta: amount stored in tab_name as 'hp|{amount}'
 function isHogarPending(e: PersonalExpense): boolean {
   return (e.tab_name ?? '').startsWith('hp|')
@@ -52,15 +64,21 @@ function expenseTotal(e: PersonalExpense): number {
   return allCols.reduce((s, k) => s + ((e[k] as number | null) ?? 0), 0)
 }
 
-function detectFormValues(e: PersonalExpense): { clasificacion: Clasificacion; monto: string; hogar_cuenta: string; power_subcuenta: string } {
-  if (isHogarPending(e)) return { clasificacion: 'hogar', monto: hogarPendingAmount(e).toString(), hogar_cuenta: '', power_subcuenta: '' }
-  if ((e.julio ?? 0) > 0) return { clasificacion: 'personal', monto: e.julio!.toString(), hogar_cuenta: '', power_subcuenta: '' }
-  if ((e.flor ?? 0) > 0) return { clasificacion: 'flor_me_debe', monto: e.flor!.toString(), hogar_cuenta: '', power_subcuenta: '' }
+function detectSplits(e: PersonalExpense): Split[] {
+  if (isHogarPending(e)) {
+    return [{ id: 'hp', clasificacion: 'hogar', hogar_cuenta: '', power_subcuenta: '', monto: hogarPendingAmount(e).toString() }]
+  }
+  const splits: Split[] = []
+  if ((e.julio ?? 0) > 0) splits.push({ id: 'julio', clasificacion: 'personal', hogar_cuenta: '', power_subcuenta: '', monto: e.julio!.toString() })
+  if ((e.flor ?? 0) > 0) splits.push({ id: 'flor', clasificacion: 'flor_me_debe', hogar_cuenta: '', power_subcuenta: '', monto: e.flor!.toString() })
   for (const c of HOGAR_CUENTAS) {
     const val = (e[c.key as keyof PersonalExpense] as number | null) ?? 0
-    if (val > 0) return { clasificacion: 'hogar', monto: val.toString(), hogar_cuenta: c.key, power_subcuenta: getPowerSubcuenta(e) }
+    if (val > 0) {
+      const isPower = c.key === 'power' || c.key === 'otros_power'
+      splits.push({ id: c.key, clasificacion: 'hogar', hogar_cuenta: c.key, power_subcuenta: isPower ? getPowerSubcuenta(e) : '', monto: val.toString() })
+    }
   }
-  return { clasificacion: '', monto: '', hogar_cuenta: '', power_subcuenta: '' }
+  return splits.length > 0 ? splits : [makeSplit()]
 }
 
 function localDateStr(d = new Date()) {
@@ -71,10 +89,8 @@ const EMPTY_FORM = {
   date: localDateStr(),
   created_at_date: '',
   description: '',
-  monto: '',
-  clasificacion: '' as Clasificacion,
-  hogar_cuenta: '',
-  power_subcuenta: '',
+  totalMonto: '',
+  splits: [makeSplit()] as Split[],
 }
 
 export default function GastosClient({ initialExpenses, userId, isJulio }: Props) {
@@ -115,24 +131,29 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
 
   const subtotal = filtered.reduce((s, e) => s + expenseTotal(e), 0)
 
-  const totalPersonal    = filtered.filter(e => getClasificacion(e) === 'personal').reduce((s, e) => s + expenseTotal(e), 0)
-  const totalFlorMeDebe  = filtered.filter(e => getClasificacion(e) === 'flor_me_debe').reduce((s, e) => s + expenseTotal(e), 0)
-  const totalHogar       = filtered.filter(e => getClasificacion(e) === 'hogar' || getClasificacion(e) === 'hogar_sin_cuenta').reduce((s, e) => s + expenseTotal(e), 0)
+  const totalPersonal   = filtered.reduce((s, e) => s + ((e.julio as number | null) ?? 0), 0)
+  const totalFlorMeDebe = filtered.reduce((s, e) => s + ((e.flor as number | null) ?? 0), 0)
+  const totalHogar      = filtered.reduce((s, e) => {
+    const hogarCols = HOGAR_CUENTAS.reduce((hs, c) => hs + ((e[c.key as keyof PersonalExpense] as number | null) ?? 0), 0)
+    return s + hogarCols + (isHogarPending(e) ? hogarPendingAmount(e) : 0)
+  }, 0)
 
   function openNew() {
     setEditExpense(null)
-    setForm({ ...EMPTY_FORM, date: localDateStr() })
+    setForm({ ...EMPTY_FORM, date: localDateStr(), splits: [makeSplit()] })
     setShowForm(true)
   }
 
   function openEdit(e: PersonalExpense) {
     setEditExpense(e)
-    const detected = detectFormValues(e)
+    const splits = detectSplits(e)
+    const total = splits.reduce((s, sp) => s + (parseFloat(sp.monto) || 0), 0)
     setForm({
       date: e.date,
       created_at_date: e.created_at?.slice(0, 10) ?? '',
       description: e.description,
-      ...detected,
+      totalMonto: total > 0 ? total.toString() : '',
+      splits,
     })
     setShowForm(true)
   }
@@ -145,11 +166,16 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [showForm])
 
-  const canSave = !!form.description && !!form.monto && !!form.clasificacion
+  const splitSum = form.splits.reduce((s, sp) => s + (parseFloat(sp.monto) || 0), 0)
+  const totalNum = parseFloat(form.totalMonto) || 0
+  const canSave = !!form.description &&
+    totalNum > 0 &&
+    form.splits.length > 0 &&
+    form.splits.every(sp => !!sp.clasificacion) &&
+    Math.abs(totalNum - splitSum) < 0.01
 
   async function save(andAnother = false) {
     setSaving(true)
-    const amount = form.monto ? parseFloat(form.monto) : null
 
     const payload: Record<string, unknown> = {
       date: form.date,
@@ -170,19 +196,31 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
       tab_name: null,
     }
 
-    if (form.clasificacion === 'personal') {
-      payload.julio = amount
-    } else if (form.clasificacion === 'flor_me_debe') {
-      payload.flor = amount
-    } else if (form.clasificacion === 'hogar' && form.hogar_cuenta) {
-      payload[form.hogar_cuenta] = amount
-      const isPowerAccount = form.hogar_cuenta === 'power' || form.hogar_cuenta === 'otros_power'
-      if (isPowerAccount && form.power_subcuenta) {
-        payload.tab_name = `ps|${form.power_subcuenta}`
+    let hogarPendingAmt = 0
+    let powerSubcuenta = ''
+
+    for (const split of form.splits) {
+      const amount = parseFloat(split.monto) || 0
+      if (split.clasificacion === 'personal') {
+        payload.julio = amount
+      } else if (split.clasificacion === 'flor_me_debe') {
+        payload.flor = amount
+      } else if (split.clasificacion === 'hogar') {
+        if (!split.hogar_cuenta) {
+          hogarPendingAmt += amount
+        } else {
+          payload[split.hogar_cuenta] = amount
+          if ((split.hogar_cuenta === 'power' || split.hogar_cuenta === 'otros_power') && split.power_subcuenta) {
+            powerSubcuenta = split.power_subcuenta
+          }
+        }
       }
-    } else if (form.clasificacion === 'hogar' && !form.hogar_cuenta) {
-      // Store amount in tab_name until account is assigned
-      payload.tab_name = `hp|${amount}`
+    }
+
+    if (hogarPendingAmt > 0) {
+      payload.tab_name = `hp|${hogarPendingAmt}`
+    } else if (powerSubcuenta) {
+      payload.tab_name = `ps|${powerSubcuenta}`
     }
 
     if (editExpense && form.created_at_date) {
@@ -202,7 +240,7 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
     setSaving(false)
     if (andAnother) {
       setEditExpense(null)
-      setForm(EMPTY_FORM)
+      setForm({ ...EMPTY_FORM, date: form.date, splits: [makeSplit()] })
     } else {
       setShowForm(false)
     }
@@ -370,14 +408,8 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
           <p className="p-6 text-center text-gray-400 dark:text-gray-500 text-sm">Sin gastos para este filtro</p>
         ) : filtered.map(e => {
           const isSelected = selectedIds.has(e.id)
-          const clas = getClasificacion(e)
-          const clasStyle = CLAS_STYLES[clas]
-          const hogarCuenta = clas === 'hogar'
-            ? HOGAR_CUENTAS.find(c => ((e[c.key as keyof PersonalExpense] as number | null) ?? 0) > 0)
-            : null
-          const isPowerAccount = hogarCuenta && (hogarCuenta.key === 'power' || hogarCuenta.key === 'otros_power')
-          const powerSub = isPowerAccount ? POWER_COLS.find(c => c.key === getPowerSubcuenta(e)) : null
-          const powerSinSubcuenta = isPowerAccount && !powerSub
+          const splits = detectSplits(e)
+          const isMulti = splits.length > 1
           return (
           <div
             key={e.id}
@@ -391,23 +423,51 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
             )}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{e.description}</p>
-              <div className="flex gap-2 mt-0.5 flex-wrap">
-                <span className="text-xs text-gray-400 dark:text-gray-500" title="Fecha del gasto">{new Date(e.date + 'T00:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}</span>
+              <div className="flex gap-1.5 mt-0.5 flex-wrap items-center">
+                <span className="text-xs text-gray-400 dark:text-gray-500">{new Date(e.date + 'T00:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}</span>
                 {e.created_at && (
-                  <span className="text-xs text-gray-400 dark:text-gray-500" title="Fecha de registro">· reg. {new Date(e.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">· reg. {new Date(e.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}</span>
                 )}
-                <span className={`text-xs px-1.5 py-0.5 rounded-full ${clasStyle.bg} ${clasStyle.text}`}>
-                  {clasStyle.label}
-                </span>
-                {hogarCuenta && (
-                  <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded-full">{hogarCuenta.label}</span>
-                )}
-                {powerSinSubcuenta && (
-                  <span className="text-xs bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 px-1.5 py-0.5 rounded-full">Power · sin columna</span>
-                )}
-                {powerSub && (
-                  <span className="text-xs bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 px-1.5 py-0.5 rounded-full">{powerSub.label}</span>
-                )}
+                {splits.map(sp => {
+                  const amt = parseFloat(sp.monto)
+                  const amtLabel = isMulti && amt > 0 ? ` · S/ ${amt.toLocaleString('es-PE', { minimumFractionDigits: 2 })}` : ''
+                  if (sp.clasificacion === 'personal') {
+                    return (
+                      <span key={sp.id} className={`text-xs px-1.5 py-0.5 rounded-full ${CLAS_STYLES.personal.bg} ${CLAS_STYLES.personal.text}`}>
+                        {CLAS_STYLES.personal.label}{amtLabel}
+                      </span>
+                    )
+                  }
+                  if (sp.clasificacion === 'flor_me_debe') {
+                    return (
+                      <span key={sp.id} className={`text-xs px-1.5 py-0.5 rounded-full ${CLAS_STYLES.flor_me_debe.bg} ${CLAS_STYLES.flor_me_debe.text}`}>
+                        {CLAS_STYLES.flor_me_debe.label}{amtLabel}
+                      </span>
+                    )
+                  }
+                  if (sp.clasificacion === 'hogar') {
+                    if (!sp.hogar_cuenta) {
+                      return (
+                        <span key={sp.id} className={`text-xs px-1.5 py-0.5 rounded-full ${CLAS_STYLES.hogar_sin_cuenta.bg} ${CLAS_STYLES.hogar_sin_cuenta.text}`}>
+                          Hogar · sin cuenta{amtLabel}
+                        </span>
+                      )
+                    }
+                    const cuentaLabel = HOGAR_CUENTAS.find(c => c.key === sp.hogar_cuenta)?.label ?? sp.hogar_cuenta
+                    const isPower = sp.hogar_cuenta === 'power' || sp.hogar_cuenta === 'otros_power'
+                    const powerSub = isPower && sp.power_subcuenta ? POWER_COLS.find(c => c.key === sp.power_subcuenta) : null
+                    const powerSinSub = isPower && !sp.power_subcuenta
+                    return (
+                      <span key={sp.id} className={`text-xs px-1.5 py-0.5 rounded-full inline-flex items-center gap-1 ${powerSinSub ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}>
+                        {cuentaLabel}
+                        {powerSinSub && ' · sin columna'}
+                        {powerSub && <span className="bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 px-1 rounded-full"> — {powerSub.label}</span>}
+                        {amtLabel}
+                      </span>
+                    )
+                  }
+                  return null
+                })}
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -466,64 +526,186 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
                 <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Descripción</label>
                 <input type="text" className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm" placeholder="Ej: Supermercado" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
               </div>
+
+              {/* Total amount */}
               <div>
-                <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Monto (S/)</label>
+                <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Monto total (S/)</label>
                 <input
                   type="number"
                   step="0.01"
                   placeholder="0.00"
                   className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
-                  value={form.monto}
-                  onChange={e => setForm(f => ({ ...f, monto: e.target.value }))}
+                  value={form.totalMonto}
+                  onChange={e => setForm(f => ({ ...f, totalMonto: e.target.value }))}
                 />
               </div>
+
+              {/* Splits */}
               <div>
-                <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Clasificación</label>
-                <select
-                  className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800"
-                  value={form.clasificacion}
-                  onChange={e => setForm(f => ({ ...f, clasificacion: e.target.value as Clasificacion, hogar_cuenta: '' }))}
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                    División del gasto
+                  </label>
+                  {form.splits.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const total = parseFloat(form.totalMonto) || 0
+                        if (total === 0) return
+                        const n = form.splits.length
+                        const each = Math.floor((total / n) * 100) / 100
+                        const last = Math.round((total - each * (n - 1)) * 100) / 100
+                        setForm(f => ({
+                          ...f,
+                          splits: f.splits.map((sp, i) => ({ ...sp, monto: (i < n - 1 ? each : last).toString() }))
+                        }))
+                      }}
+                      className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+                    >
+                      Dividir equitativamente
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  {form.splits.map((split, idx) => {
+                    const total = parseFloat(form.totalMonto) || 0
+                    const splitNum = parseFloat(split.monto) || 0
+                    const pct = total > 0 ? ((splitNum / total) * 100).toFixed(1) : ''
+                    return (
+                      <div key={split.id} className="border border-gray-200 dark:border-gray-600 rounded-xl p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
+                            {form.splits.length > 1 ? `Parte ${idx + 1}` : 'Clasificación'}
+                          </span>
+                          {form.splits.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => setForm(f => ({ ...f, splits: f.splits.filter((_, i) => i !== idx) }))}
+                              className="text-red-400 hover:text-red-600 text-xs leading-none"
+                            >✕</button>
+                          )}
+                        </div>
+
+                        <select
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800"
+                          value={split.clasificacion}
+                          onChange={e => setForm(f => ({
+                            ...f,
+                            splits: f.splits.map((sp, i) => i === idx
+                              ? {
+                                  ...sp,
+                                  clasificacion: e.target.value as Clasificacion,
+                                  hogar_cuenta: '',
+                                  power_subcuenta: '',
+                                  monto: idx === 0 && f.splits.length === 1 ? f.totalMonto : sp.monto,
+                                }
+                              : sp)
+                          }))}
+                        >
+                          <option value="">Seleccionar...</option>
+                          <option value="personal">Gasto personal</option>
+                          <option value="flor_me_debe">Gasto — {deudaLabel}</option>
+                          <option value="hogar">Gasto hogar</option>
+                        </select>
+
+                        {split.clasificacion === 'hogar' && (
+                          <select
+                            className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800"
+                            value={split.hogar_cuenta}
+                            onChange={e => setForm(f => ({
+                              ...f,
+                              splits: f.splits.map((sp, i) => i === idx
+                                ? { ...sp, hogar_cuenta: e.target.value, power_subcuenta: '' }
+                                : sp)
+                            }))}
+                          >
+                            <option value="">Sin cuenta asignada</option>
+                            {HOGAR_CUENTAS.map(c => (
+                              <option key={c.key} value={c.key}>{c.label}</option>
+                            ))}
+                          </select>
+                        )}
+
+                        {(split.hogar_cuenta === 'power' || split.hogar_cuenta === 'otros_power') && (
+                          <select
+                            className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800"
+                            value={split.power_subcuenta}
+                            onChange={e => setForm(f => ({
+                              ...f,
+                              splits: f.splits.map((sp, i) => i === idx
+                                ? { ...sp, power_subcuenta: e.target.value }
+                                : sp)
+                            }))}
+                          >
+                            <option value="">Sin especificar</option>
+                            {POWER_COLS.map(c => (
+                              <option key={c.key} value={c.key}>{c.label}</option>
+                            ))}
+                          </select>
+                        )}
+
+                        {/* Amount + percentage */}
+                        <div className="flex gap-2">
+                          <div className="flex-1 relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 pointer-events-none">S/</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              placeholder="0.00"
+                              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg pl-8 pr-3 py-2 text-sm"
+                              value={split.monto}
+                              onChange={e => setForm(f => ({
+                                ...f,
+                                splits: f.splits.map((sp, i) => i === idx ? { ...sp, monto: e.target.value } : sp)
+                              }))}
+                            />
+                          </div>
+                          <div className="w-20 relative">
+                            <input
+                              type="number"
+                              step="0.1"
+                              min="0"
+                              max="100"
+                              placeholder="0"
+                              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg pl-3 pr-6 py-2 text-sm"
+                              value={pct}
+                              onChange={e => {
+                                const pctVal = parseFloat(e.target.value) || 0
+                                const t = parseFloat(form.totalMonto) || 0
+                                setForm(f => ({
+                                  ...f,
+                                  splits: f.splits.map((sp, i) => i === idx
+                                    ? { ...sp, monto: t > 0 ? (pctVal * t / 100).toFixed(2) : '' }
+                                    : sp)
+                                }))
+                              }}
+                            />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">%</span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Remaining indicator */}
+                {totalNum > 0 && (
+                  <p className={`mt-1.5 text-xs font-medium ${Math.abs(totalNum - splitSum) < 0.01 ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                    {Math.abs(totalNum - splitSum) < 0.01
+                      ? '✓ Suma correcta'
+                      : `Restante: S/ ${(totalNum - splitSum).toFixed(2)}`}
+                  </p>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, splits: [...f.splits, makeSplit()] }))}
+                  className="mt-2 w-full border border-dashed border-gray-300 dark:border-gray-600 rounded-xl py-2 text-sm text-gray-500 dark:text-gray-400 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition"
                 >
-                  <option value="">Seleccionar...</option>
-                  <option value="personal">Gasto personal</option>
-                  <option value="flor_me_debe">Gasto — {deudaLabel}</option>
-                  <option value="hogar">Gasto hogar</option>
-                </select>
+                  + Agregar parte
+                </button>
               </div>
-              {form.clasificacion === 'hogar' && (
-                <div>
-                  <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                    Cuenta <span className="text-gray-400 font-normal">(opcional — necesaria para el corte)</span>
-                  </label>
-                  <select
-                    className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800"
-                    value={form.hogar_cuenta}
-                    onChange={e => setForm(f => ({ ...f, hogar_cuenta: e.target.value, power_subcuenta: '' }))}
-                  >
-                    <option value="">Sin asignar por ahora</option>
-                    {HOGAR_CUENTAS.map(c => (
-                      <option key={c.key} value={c.key}>{c.label}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              {(form.hogar_cuenta === 'power' || form.hogar_cuenta === 'otros_power') && (
-                <div>
-                  <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                    Columna Power <span className="text-gray-400 font-normal">(opcional)</span>
-                  </label>
-                  <select
-                    className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800"
-                    value={form.power_subcuenta}
-                    onChange={e => setForm(f => ({ ...f, power_subcuenta: e.target.value }))}
-                  >
-                    <option value="">Sin especificar</option>
-                    {POWER_COLS.map(c => (
-                      <option key={c.key} value={c.key}>{c.label}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
             </div>
             <div className="px-5 py-4 border-t border-gray-100 dark:border-gray-700 flex gap-2 justify-end flex-wrap">
               <button onClick={() => setShowForm(false)} className="text-sm text-gray-500 dark:text-gray-400 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">Cancelar</button>
