@@ -57,8 +57,32 @@ export const EXPENSE_COLUMNS = [
   { key: 'salidas',        label: 'Salidas',        account: 'flor_julio' },
   { key: 'power',          label: 'Power',          account: 'power' },
   { key: 'gasolina',       label: 'Gasolina',       account: 'gaso' },
-  { key: 'regalos',        label: 'Regalos',        account: 'limpieza_regalos' },
+  { key: 'regalos',        label: 'Limpieza y Regalos', account: 'limpieza_regalos' },
   { key: 'navidad',        label: 'Navidad',        account: 'navidad' },
   { key: 'otros_power',    label: 'Otros (Power)',  account: 'power' },
   { key: 'entretenimiento',label: 'Entretenimiento',account: 'entretenimiento' },
 ] as const
+
+// Groups expense columns by bank account for corte de cuentas settlement
+// julio/flor columns excluded — they are personal/IOUs, not bank account charges
+export const CORTE_ACCOUNT_GROUPS = [
+  { accountKey: 'casita',           label: 'Casita',             expenseColumns: ['casita'] as string[] },
+  { accountKey: 'flor_julio',       label: 'Flor y Julio',       expenseColumns: ['flor_julio', 'salidas'] as string[] },
+  { accountKey: 'power',            label: 'Power',              expenseColumns: ['power', 'otros_power'] as string[] },
+  { accountKey: 'gaso',             label: 'Gasolina',           expenseColumns: ['gasolina'] as string[] },
+  { accountKey: 'limpieza_regalos', label: 'Limpieza y Regalos', expenseColumns: ['regalos'] as string[] },
+  { accountKey: 'navidad',          label: 'Navidad',            expenseColumns: ['navidad'] as string[] },
+  { accountKey: 'entretenimiento',  label: 'Entretenimiento',    expenseColumns: ['entretenimiento'] as string[] },
+]
+
+export function computeCorteAccountTotals(
+  expenses: Record<string, number | null | string | boolean>[]
+): Record<string, number> {
+  const totals: Record<string, number> = {}
+  for (const group of CORTE_ACCOUNT_GROUPS) {
+    totals[group.accountKey] = expenses.reduce((sum, e) => {
+      return sum + group.expenseColumns.reduce((s, col) => s + ((e[col] as number | null) ?? 0), 0)
+    }, 0)
+  }
+  return totals
+}

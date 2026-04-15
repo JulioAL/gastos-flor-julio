@@ -17,7 +17,13 @@
       "Bash(pbcopy)",
       "Bash(node -e ':*)",
       "Bash(python3)",
-      "Bash(node scripts/migrar-excel.mjs)"
+      "Bash(node scripts/migrar-excel.mjs)",
+      "Bash(npx tsc:*)",
+      "Bash(npx next:*)",
+      "Bash(node -e \"require\\('./node_modules/next'\\)\")",
+      "Bash(ls /Users/jalvalinares/projects/first-one/node_modules/.bin/next*)",
+      "Bash(node node_modules/next/dist/bin/next build)",
+      "Bash(node:*)"
     ]
   }
 }

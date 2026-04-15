@@ -47,9 +47,9 @@ export default function ResumenClient({ months }: Props) {
   return (
     <div className="space-y-6 pb-20 sm:pb-0">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">Resumen del Mes</h1>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Resumen del Mes</h1>
         <select
-          className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+          className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm"
           value={selectedMonthId}
           onChange={e => setSelectedMonthId(e.target.value)}
         >
@@ -60,22 +60,22 @@ export default function ResumenClient({ months }: Props) {
       </div>
 
       {loading ? (
-        <p className="text-gray-400 text-sm">Cargando...</p>
+        <p className="text-gray-400 dark:text-gray-500 text-sm">Cargando...</p>
       ) : (
         <>
           {/* Balance cards */}
           <div className="grid grid-cols-3 gap-3">
-            <div className="bg-green-50 rounded-xl p-4">
-              <p className="text-xs text-green-600 font-medium">Ingresos</p>
-              <p className="text-lg font-bold text-green-700">S/ {totalIncome.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</p>
+            <div className="bg-green-50 dark:bg-green-900/30 rounded-xl p-4">
+              <p className="text-xs text-green-600 dark:text-green-400 font-medium">Ingresos</p>
+              <p className="text-lg font-bold text-green-700 dark:text-green-400">S/ {totalIncome.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</p>
             </div>
-            <div className="bg-red-50 rounded-xl p-4">
-              <p className="text-xs text-red-600 font-medium">Gastos</p>
-              <p className="text-lg font-bold text-red-700">S/ {totalExpenses.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</p>
+            <div className="bg-red-50 dark:bg-red-900/30 rounded-xl p-4">
+              <p className="text-xs text-red-600 dark:text-red-400 font-medium">Gastos</p>
+              <p className="text-lg font-bold text-red-700 dark:text-red-400">S/ {totalExpenses.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</p>
             </div>
-            <div className={`${balance >= 0 ? 'bg-indigo-50' : 'bg-orange-50'} rounded-xl p-4`}>
-              <p className={`text-xs font-medium ${balance >= 0 ? 'text-indigo-600' : 'text-orange-600'}`}>Balance</p>
-              <p className={`text-lg font-bold ${balance >= 0 ? 'text-indigo-700' : 'text-orange-700'}`}>
+            <div className={`${balance >= 0 ? 'bg-indigo-50 dark:bg-indigo-900/30' : 'bg-orange-50 dark:bg-orange-900/30'} rounded-xl p-4`}>
+              <p className={`text-xs font-medium ${balance >= 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-orange-600 dark:text-orange-400'}`}>Balance</p>
+              <p className={`text-lg font-bold ${balance >= 0 ? 'text-indigo-700 dark:text-indigo-400' : 'text-orange-700 dark:text-orange-400'}`}>
                 S/ {balance.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
               </p>
             </div>
@@ -86,12 +86,12 @@ export default function ResumenClient({ months }: Props) {
             <table className="w-full text-sm">
               <tbody>
                 {income.map(i => (
-                  <tr key={i.id} className="border-b border-gray-100 last:border-0">
-                    <td className="py-2 text-gray-700">{i.description ?? i.source}</td>
-                    <td className="py-2 text-right font-medium text-gray-900">
+                  <tr key={i.id} className="border-b border-gray-100 dark:border-gray-700 last:border-0">
+                    <td className="py-2 text-gray-700 dark:text-gray-300">{i.description ?? i.source}</td>
+                    <td className="py-2 text-right font-medium text-gray-900 dark:text-gray-100">
                       S/ {(i.amount ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                     </td>
-                    {!i.included_in_budget && <td className="py-2 pl-2 text-xs text-gray-400">no incluido</td>}
+                    {!i.included_in_budget && <td className="py-2 pl-2 text-xs text-gray-400 dark:text-gray-500">no incluido</td>}
                   </tr>
                 ))}
               </tbody>
@@ -102,7 +102,7 @@ export default function ResumenClient({ months }: Props) {
           <Section title="Gastos Programados">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-xs text-gray-400 border-b border-gray-100">
+                <tr className="text-xs text-gray-400 dark:text-gray-500 border-b border-gray-100 dark:border-gray-700">
                   <th className="text-left py-1.5 font-medium">Categoría</th>
                   <th className="text-left py-1.5 font-medium">Responsable</th>
                   <th className="text-left py-1.5 font-medium">Cuenta</th>
@@ -114,11 +114,11 @@ export default function ResumenClient({ months }: Props) {
                   const exp = expenses.find(e => e.category === cat.key)
                   if (!exp) return null
                   return (
-                    <tr key={cat.key} className="border-b border-gray-50 last:border-0">
-                      <td className="py-2 text-gray-700">{cat.label}</td>
-                      <td className="py-2 text-gray-500 capitalize">{exp.responsible}</td>
-                      <td className="py-2 text-gray-500">{exp.account}</td>
-                      <td className="py-2 text-right font-medium text-gray-900">
+                    <tr key={cat.key} className="border-b border-gray-50 dark:border-gray-700/50 last:border-0">
+                      <td className="py-2 text-gray-700 dark:text-gray-300">{cat.label}</td>
+                      <td className="py-2 text-gray-500 dark:text-gray-400 capitalize">{exp.responsible}</td>
+                      <td className="py-2 text-gray-500 dark:text-gray-400">{exp.account}</td>
+                      <td className="py-2 text-right font-medium text-gray-900 dark:text-gray-100">
                         S/ {(exp.amount ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
@@ -135,9 +135,9 @@ export default function ResumenClient({ months }: Props) {
                 const amt = byAccount[acc.key] ?? 0
                 if (!amt) return null
                 return (
-                  <div key={acc.key} className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-xs text-gray-500">{acc.label}</p>
-                    <p className="font-bold text-gray-800 text-sm mt-0.5">
+                  <div key={acc.key} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{acc.label}</p>
+                    <p className="font-bold text-gray-800 dark:text-gray-200 text-sm mt-0.5">
                       S/ {amt.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                     </p>
                   </div>
@@ -151,7 +151,7 @@ export default function ResumenClient({ months }: Props) {
             <Section title="Transferencias Julio ↔ Flor">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-xs text-gray-400 border-b border-gray-100">
+                  <tr className="text-xs text-gray-400 dark:text-gray-500 border-b border-gray-100 dark:border-gray-700">
                     <th className="text-left py-1.5 font-medium">Concepto</th>
                     <th className="text-right py-1.5 font-medium">Julio</th>
                     <th className="text-right py-1.5 font-medium">Flor</th>
@@ -159,12 +159,12 @@ export default function ResumenClient({ months }: Props) {
                 </thead>
                 <tbody>
                   {transfers.map(t => (
-                    <tr key={t.id} className="border-b border-gray-50 last:border-0">
-                      <td className="py-2 text-gray-700">{t.concept ?? t.account}</td>
-                      <td className="py-2 text-right text-gray-900">
+                    <tr key={t.id} className="border-b border-gray-50 dark:border-gray-700/50 last:border-0">
+                      <td className="py-2 text-gray-700 dark:text-gray-300">{t.concept ?? t.account}</td>
+                      <td className="py-2 text-right text-gray-900 dark:text-gray-100">
                         {t.julio_amount ? `S/ ${t.julio_amount.toLocaleString('es-PE', { minimumFractionDigits: 2 })}` : '-'}
                       </td>
-                      <td className="py-2 text-right text-gray-900">
+                      <td className="py-2 text-right text-gray-900 dark:text-gray-100">
                         {t.flor_amount ? `S/ ${t.flor_amount.toLocaleString('es-PE', { minimumFractionDigits: 2 })}` : '-'}
                       </td>
                     </tr>
@@ -181,9 +181,9 @@ export default function ResumenClient({ months }: Props) {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div className="px-4 py-3 border-b border-gray-100">
-        <h2 className="font-semibold text-gray-800 text-sm">{title}</h2>
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+        <h2 className="font-semibold text-gray-800 dark:text-gray-200 text-sm">{title}</h2>
       </div>
       <div className="px-4 py-3">{children}</div>
     </div>

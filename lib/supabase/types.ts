@@ -139,6 +139,49 @@ export type Database = {
           notes?: string | null
         }
       }
+      cortes: {
+        Row: {
+          id: string
+          settled_date: string
+          year: number
+          month: number
+          notes: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          settled_date?: string
+          year: number
+          month: number
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          settled_date?: string
+          year?: number
+          month?: number
+          notes?: string | null
+        }
+      }
+      corte_account_totals: {
+        Row: {
+          id: string
+          corte_id: string
+          account_key: string
+          total_amount: number
+        }
+        Insert: {
+          id?: string
+          corte_id: string
+          account_key: string
+          total_amount: number
+        }
+        Update: {
+          total_amount?: number
+        }
+      }
       personal_expenses: {
         Row: {
           id: string
@@ -158,6 +201,7 @@ export type Database = {
           entretenimiento: number | null
           tab_name: string | null
           year: number
+          corte_id: string | null
           created_at: string
           updated_at: string
         }
@@ -179,6 +223,7 @@ export type Database = {
           entretenimiento?: number | null
           tab_name?: string | null
           year?: number
+          corte_id?: string | null
         }
         Update: {
           date?: string
@@ -194,6 +239,7 @@ export type Database = {
           navidad?: number | null
           otros_power?: number | null
           entretenimiento?: number | null
+          corte_id?: string | null
         }
       }
       power_account_entries: {
@@ -268,3 +314,6 @@ export type BudgetEntertainmentDetail = Database['public']['Tables']['budget_ent
 export type BudgetTransfer = Database['public']['Tables']['budget_transfers']['Row']
 export type PersonalExpense = Database['public']['Tables']['personal_expenses']['Row']
 export type PowerAccountEntry = Database['public']['Tables']['power_account_entries']['Row']
+export type Corte = Database['public']['Tables']['cortes']['Row']
+export type CorteAccountTotal = Database['public']['Tables']['corte_account_totals']['Row']
+export type CorteWithTotals = Corte & { corte_account_totals: CorteAccountTotal[] }

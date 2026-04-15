@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { createClient } from '@/lib/supabase/client'
 import type { PowerAccountEntry } from '@/lib/supabase/types'
@@ -44,6 +44,7 @@ export default function PowerClient({ initialEntries }: Props) {
   const [saving, setSaving] = useState(false)
   const [filterYear, setFilterYear] = useState<number>(2026)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [chartCol, setChartCol] = useState<string>('total')
 
   // All available years for the selector
   const years = useMemo(() =>
@@ -71,31 +72,48 @@ export default function PowerClient({ initialEntries }: Props) {
     julio: 7, agosto: 8, setiembre: 9, septiembre: 9, octubre: 10, noviembre: 11, diciembre: 12,
   }
 
-  // Line chart: group by month+year, one point per month, running total
+  // Line chart: group by month+year, one point per month, running totals for all cols + total
   const chartData = useMemo(() => {
-    // Group entries by "Mes Año" key
-    const grouped: Record<string, number> = {}
+    const grouped: Record<string, Record<string, number>> = {}
     for (const e of entries) {
       const monthNum = MONTH_ORDER[e.entry_month?.toLowerCase() ?? ''] ?? 0
       const year = e.entry_year ?? 0
       const key = `${year}-${String(monthNum).padStart(2, '0')}`
+      if (!grouped[key]) grouped[key] = {}
+      for (const c of POWER_COLS) {
+        grouped[key][c.key] = (grouped[key][c.key] ?? 0) + ((e[c.key] as number | null) ?? 0)
+      }
       const rowTotal = POWER_COLS.reduce((s, c) => s + ((e[c.key] as number | null) ?? 0), 0)
-      grouped[key] = (grouped[key] ?? 0) + rowTotal
+      grouped[key].total = (grouped[key].total ?? 0) + rowTotal
     }
-    // Sort keys chronologically
     const sortedKeys = Object.keys(grouped).sort()
-    let running = 0
+    const running: Record<string, number> = {}
     return sortedKeys.map(key => {
-      running += grouped[key]
       const [year, monthPad] = key.split('-')
       const monthNum = parseInt(monthPad)
       const monthName = Object.entries(MONTH_ORDER).find(([, v]) => v === monthNum)?.[0] ?? key
-      return {
+      const point: Record<string, number | string> = {
         label: `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${year}`,
-        total: Math.round(running * 100) / 100,
       }
+      for (const field of ['total', ...POWER_COLS.map(c => c.key)]) {
+        const delta = grouped[key][field] ?? 0
+        running[field] = (running[field] ?? 0) + delta
+        point[field] = Math.round(running[field] * 100) / 100
+        point[`${field}_delta`] = Math.round(delta * 100) / 100
+      }
+      return point
     })
   }, [entries])
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return
+      if (confirmDeleteId) setConfirmDeleteId(null)
+      else if (showForm) { setShowForm(false); setForm(EMPTY_FORM) }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [showForm, confirmDeleteId])
 
   async function save(andAnother = false) {
     setSaving(true)
@@ -128,25 +146,44 @@ export default function PowerClient({ initialEntries }: Props) {
     setConfirmDeleteId(null)
   }
 
+  function ChartTooltip({ active, payload }: { active?: boolean; payload?: { payload: Record<string, number | string> }[] }) {
+    if (!active || !payload?.length) return null
+    const d = payload[0].payload
+    const value = d[chartCol] as number
+    const delta = d[`${chartCol}_delta`] as number
+    const fmt = (n: number) => `S/ ${n.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`
+    return (
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 shadow-lg text-xs space-y-1">
+        <p className="font-semibold text-gray-700 dark:text-gray-300">{d.label as string}</p>
+        <p className="text-gray-800 dark:text-gray-200">{fmt(value)}</p>
+        {delta !== 0 && (
+          <p className={delta > 0 ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-red-500 dark:text-red-400 font-semibold'}>
+            {delta > 0 ? '+' : ''}{fmt(delta)}
+          </p>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6 pb-20 sm:pb-0">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">Cuenta Power</h1>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Cuenta Power</h1>
         <button onClick={() => setShowForm(true)} className="bg-indigo-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
           + Nueva entrada
         </button>
       </div>
 
       {/* Column totals */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-800 text-sm">Totales acumulados por columna</h2>
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+          <h2 className="font-semibold text-gray-800 dark:text-gray-200 text-sm">Totales acumulados por columna</h2>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 divide-y sm:divide-y-0 divide-gray-100">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 divide-y sm:divide-y-0 divide-gray-100 dark:divide-gray-700">
           {POWER_COLS.map(col => (
-            <div key={col.key} className="p-3 border-b sm:border-b-0 sm:border-r border-gray-100 last:border-0">
-              <p className="text-xs text-gray-500 font-medium">{col.label}</p>
-              <p className={`text-sm font-bold mt-0.5 ${(totals[col.key] ?? 0) >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+            <div key={col.key} className="p-3 border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-gray-700 last:border-0">
+              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{col.label}</p>
+              <p className={`text-sm font-bold mt-0.5 ${(totals[col.key] ?? 0) >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                 S/ {(totals[col.key] ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
               </p>
             </div>
@@ -156,27 +193,37 @@ export default function PowerClient({ initialEntries }: Props) {
 
       {/* Evolution chart */}
       {chartData.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <h2 className="font-semibold text-gray-800 text-sm mb-4">Evolución del saldo Power</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+          <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+            <h2 className="font-semibold text-gray-800 dark:text-gray-200 text-sm">Evolución del saldo Power</h2>
+            <select
+              className="border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-xs"
+              value={chartCol}
+              onChange={e => setChartCol(e.target.value)}
+            >
+              <option value="total">Saldo total</option>
+              {POWER_COLS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+            </select>
+          </div>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
               <XAxis dataKey="label" tick={{ fontSize: 9 }} />
               <YAxis tick={{ fontSize: 10 }} />
-              <Tooltip formatter={(v) => `S/ ${Number(v).toLocaleString('es-PE', { minimumFractionDigits: 2 })}`} />
-              <Line type="monotone" dataKey="total" stroke="#6366f1" strokeWidth={2} dot={false} />
+              <Tooltip content={<ChartTooltip />} />
+              <Line type="monotone" dataKey={chartCol} stroke="#6366f1" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
       )}
 
       {/* Full history table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-4 flex-wrap">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-x-auto">
+        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
-            <h2 className="font-semibold text-gray-800 text-sm">Historial — {filteredEntries.length} entradas</h2>
+            <h2 className="font-semibold text-gray-800 dark:text-gray-200 text-sm">Historial — {filteredEntries.length} entradas</h2>
             <select
-              className="border border-gray-300 rounded-lg px-2.5 py-1 text-xs"
+              className="border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1 text-xs"
               value={filterYear}
               onChange={e => setFilterYear(Number(e.target.value))}
             >
@@ -184,21 +231,21 @@ export default function PowerClient({ initialEntries }: Props) {
               {years.map(y => <option key={y} value={y}>{y}</option>)}
             </select>
           </div>
-          <span className="text-sm font-bold text-indigo-700">
+          <span className="text-sm font-bold text-indigo-700 dark:text-indigo-400">
             Total general (todo el historial): S/ {Object.values(totals).reduce((s, v) => s + v, 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
           </span>
         </div>
         <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
           <table className="text-xs min-w-max w-full">
             <thead className="sticky top-0 z-10">
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="text-left px-3 py-2 font-medium text-gray-500 sticky left-0 z-20 bg-gray-50 w-12 min-w-[48px]">Año</th>
-                <th className="text-left px-3 py-2 font-medium text-gray-500 sticky left-12 z-20 bg-gray-50 w-24 min-w-[96px]">Mes</th>
-                <th className="text-left px-3 py-2 font-medium text-gray-500 sticky left-36 z-20 bg-gray-50 w-32 min-w-[128px] border-r border-gray-200">Detalle</th>
+              <tr className="bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700">
+                <th className="text-left px-3 py-2 font-medium text-gray-500 dark:text-gray-400 sticky left-0 z-20 bg-gray-50 dark:bg-gray-900 w-12 min-w-[48px]">Año</th>
+                <th className="text-left px-3 py-2 font-medium text-gray-500 dark:text-gray-400 sticky left-12 z-20 bg-gray-50 dark:bg-gray-900 w-24 min-w-[96px]">Mes</th>
+                <th className="text-left px-3 py-2 font-medium text-gray-500 dark:text-gray-400 sticky left-36 z-20 bg-gray-50 dark:bg-gray-900 w-32 min-w-[128px] border-r border-gray-200 dark:border-gray-700">Detalle</th>
                 {POWER_COLS.map(c => (
-                  <th key={c.key} className="text-right px-3 py-2 font-medium text-gray-500 whitespace-nowrap">{c.label}</th>
+                  <th key={c.key} className="text-right px-3 py-2 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">{c.label}</th>
                 ))}
-                <th className="text-right px-3 py-2 font-medium text-indigo-600 whitespace-nowrap">Total fila</th>
+                <th className="text-right px-3 py-2 font-medium text-indigo-600 dark:text-indigo-400 whitespace-nowrap">Total fila</th>
                 <th className="px-3 py-2"></th>
               </tr>
             </thead>
@@ -206,23 +253,23 @@ export default function PowerClient({ initialEntries }: Props) {
               {filteredEntries.map(e => {
                 const rowTotal = POWER_COLS.reduce((s, c) => s + ((e[c.key] as number | null) ?? 0), 0)
                 return (
-                  <tr key={e.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
-                    <td className="px-3 py-2 text-gray-600 sticky left-0 z-10 bg-white w-12 min-w-[48px]">{e.entry_year}</td>
-                    <td className="px-3 py-2 text-gray-600 sticky left-12 z-10 bg-white w-24 min-w-[96px] whitespace-nowrap">{e.entry_month}</td>
-                    <td className="px-3 py-2 text-gray-500 sticky left-36 z-10 bg-white w-32 min-w-[128px] truncate border-r border-gray-200">{e.description}</td>
+                  <tr key={e.id} className="border-b border-gray-50 dark:border-gray-700/50 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <td className="px-3 py-2 text-gray-600 dark:text-gray-400 sticky left-0 z-10 bg-white dark:bg-gray-800 w-12 min-w-[48px]">{e.entry_year}</td>
+                    <td className="px-3 py-2 text-gray-600 dark:text-gray-400 sticky left-12 z-10 bg-white dark:bg-gray-800 w-24 min-w-[96px] whitespace-nowrap">{e.entry_month}</td>
+                    <td className="px-3 py-2 text-gray-500 dark:text-gray-400 sticky left-36 z-10 bg-white dark:bg-gray-800 w-32 min-w-[128px] truncate border-r border-gray-200 dark:border-gray-700">{e.description}</td>
                     {POWER_COLS.map(c => {
                       const val = e[c.key] as number | null
                       return (
-                        <td key={c.key} className={`px-3 py-2 text-right whitespace-nowrap ${val == null ? 'text-gray-200' : val >= 0 ? 'text-gray-800' : 'text-red-600'}`}>
+                        <td key={c.key} className={`px-3 py-2 text-right whitespace-nowrap ${val == null ? 'text-gray-200 dark:text-gray-700' : val >= 0 ? 'text-gray-800 dark:text-gray-200' : 'text-red-600 dark:text-red-400'}`}>
                           {val != null ? `S/ ${val.toLocaleString('es-PE', { minimumFractionDigits: 2 })}` : '-'}
                         </td>
                       )
                     })}
-                    <td className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${rowTotal >= 0 ? 'text-indigo-700' : 'text-red-600'}`}>
+                    <td className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${rowTotal >= 0 ? 'text-indigo-700 dark:text-indigo-400' : 'text-red-600 dark:text-red-400'}`}>
                       S/ {rowTotal.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                     </td>
                     <td className="px-3 py-2 text-center">
-                      <button onClick={() => setConfirmDeleteId(e.id)} className="text-red-400 hover:text-red-600 hover:bg-red-50 transition rounded p-1.5">
+                      <button onClick={() => setConfirmDeleteId(e.id)} className="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition rounded p-1.5">
                         <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
                         </svg>
@@ -233,16 +280,16 @@ export default function PowerClient({ initialEntries }: Props) {
               })}
             </tbody>
             <tfoot className="sticky bottom-0">
-              <tr className="bg-indigo-50 border-t-2 border-indigo-200 font-bold">
-                <td className="px-3 py-2 text-indigo-800 sticky left-0 z-10 bg-indigo-50 w-12 min-w-[48px]">TOT.</td>
-                <td className="px-3 py-2 sticky left-12 z-10 bg-indigo-50 w-24 min-w-[96px]"></td>
-                <td className="px-3 py-2 sticky left-36 z-10 bg-indigo-50 w-32 min-w-[128px] border-r border-indigo-200"></td>
+              <tr className="bg-indigo-50 dark:bg-indigo-900/40 border-t-2 border-indigo-200 dark:border-indigo-700 font-bold">
+                <td className="px-3 py-2 text-indigo-800 dark:text-indigo-300 sticky left-0 z-10 bg-indigo-50 dark:bg-indigo-900/40 w-12 min-w-[48px]">TOT.</td>
+                <td className="px-3 py-2 sticky left-12 z-10 bg-indigo-50 dark:bg-indigo-900/40 w-24 min-w-[96px]"></td>
+                <td className="px-3 py-2 sticky left-36 z-10 bg-indigo-50 dark:bg-indigo-900/40 w-32 min-w-[128px] border-r border-indigo-200 dark:border-indigo-700"></td>
                 {POWER_COLS.map(c => (
-                  <td key={c.key} className={`px-3 py-2 text-right whitespace-nowrap ${(totals[c.key] ?? 0) >= 0 ? 'text-indigo-700' : 'text-red-600'}`}>
+                  <td key={c.key} className={`px-3 py-2 text-right whitespace-nowrap ${(totals[c.key] ?? 0) >= 0 ? 'text-indigo-700 dark:text-indigo-400' : 'text-red-600 dark:text-red-400'}`}>
                     S/ {(totals[c.key] ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                   </td>
                 ))}
-                <td className="px-3 py-2 text-right text-indigo-800 whitespace-nowrap">
+                <td className="px-3 py-2 text-right text-indigo-800 dark:text-indigo-300 whitespace-nowrap">
                   S/ {Object.values(totals).reduce((s, v) => s + v, 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                 </td>
                 <td className="px-3 py-2"></td>
@@ -254,28 +301,28 @@ export default function PowerClient({ initialEntries }: Props) {
 
       {/* Confirm delete modal */}
       {confirmDeleteId && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl ring-1 ring-black/10">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setConfirmDeleteId(null)}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm shadow-2xl ring-1 ring-black/10 dark:ring-white/10" onClick={e => e.stopPropagation()}>
             <div className="p-6 text-center">
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-red-600 dark:text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
                 </svg>
               </div>
-              <h3 className="text-lg font-bold text-gray-900 mb-1">Eliminar entrada</h3>
-              <p className="text-sm text-gray-500">Esta acción no se puede deshacer. ¿Estás seguro?</p>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">Eliminar entrada</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Esta acción no se puede deshacer. ¿Estás seguro?</p>
             </div>
-            <div className="flex border-t border-gray-100">
+            <div className="flex border-t border-gray-100 dark:border-gray-700">
               <button
                 onClick={() => setConfirmDeleteId(null)}
-                className="flex-1 py-3.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition rounded-bl-2xl"
+                className="flex-1 py-3.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition rounded-bl-2xl"
               >
                 Cancelar
               </button>
-              <div className="w-px bg-gray-100" />
+              <div className="w-px bg-gray-100 dark:bg-gray-700" />
               <button
                 onClick={deleteEntry}
-                className="flex-1 py-3.5 text-sm font-bold text-red-600 hover:bg-red-50 transition rounded-br-2xl"
+                className="flex-1 py-3.5 text-sm font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition rounded-br-2xl"
               >
                 Eliminar
               </button>
@@ -286,39 +333,39 @@ export default function PowerClient({ initialEntries }: Props) {
 
       {/* New entry modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
-              <h2 className="font-semibold text-gray-800">Nueva entrada Power</h2>
-              <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-4" onClick={() => { setShowForm(false); setForm(EMPTY_FORM) }}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+              <h2 className="font-semibold text-gray-800 dark:text-gray-200">Nueva entrada Power</h2>
+              <button onClick={() => setShowForm(false)} className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">✕</button>
             </div>
             <div className="p-5 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-gray-500 font-medium">Año</label>
-                  <input type="number" className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.entry_year} onChange={e => setForm(f => ({ ...f, entry_year: e.target.value }))} />
+                  <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Año</label>
+                  <input type="number" className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm" value={form.entry_year} onChange={e => setForm(f => ({ ...f, entry_year: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500 font-medium">Mes</label>
-                  <select className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.entry_month} onChange={e => setForm(f => ({ ...f, entry_month: e.target.value }))}>
+                  <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Mes</label>
+                  <select className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm" value={form.entry_month} onChange={e => setForm(f => ({ ...f, entry_month: e.target.value }))}>
                     {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
                 </div>
               </div>
               <div>
-                <label className="text-xs text-gray-500 font-medium">Detalle / descripción</label>
-                <input type="text" className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+                <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Detalle / descripción</label>
+                <input type="text" className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
               </div>
-              <p className="text-xs text-gray-400 font-medium pt-1">Montos por columna</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 font-medium pt-1">Montos por columna</p>
               <div className="grid grid-cols-2 gap-2">
                 {POWER_COLS.map(col => (
                   <div key={col.key}>
-                    <label className="text-xs text-gray-500">{col.label}</label>
+                    <label className="text-xs text-gray-500 dark:text-gray-400">{col.label}</label>
                     <input
                       type="number"
                       step="0.01"
                       placeholder="0.00"
-                      className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+                      className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm"
                       value={form[col.key]}
                       onChange={e => setForm(f => ({ ...f, [col.key]: e.target.value }))}
                     />
@@ -326,9 +373,9 @@ export default function PowerClient({ initialEntries }: Props) {
                 ))}
               </div>
             </div>
-            <div className="px-5 py-4 border-t border-gray-100 flex gap-2 justify-end">
-              <button onClick={() => setShowForm(false)} className="text-sm text-gray-500 px-4 py-2 hover:bg-gray-100 rounded-lg">Cancelar</button>
-              <button onClick={() => save(true)} disabled={saving} className="border border-indigo-600 text-indigo-600 text-sm px-4 py-2 rounded-lg hover:bg-indigo-50 disabled:opacity-50 transition">
+            <div className="px-5 py-4 border-t border-gray-100 dark:border-gray-700 flex gap-2 justify-end">
+              <button onClick={() => setShowForm(false)} className="text-sm text-gray-500 dark:text-gray-400 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">Cancelar</button>
+              <button onClick={() => save(true)} disabled={saving} className="border border-indigo-600 dark:border-indigo-500 text-indigo-600 dark:text-indigo-400 text-sm px-4 py-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 disabled:opacity-50 transition">
                 {saving ? '...' : 'Guardar y agregar otra'}
               </button>
               <button onClick={() => save(false)} disabled={saving} className="bg-indigo-600 text-white text-sm px-5 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition">

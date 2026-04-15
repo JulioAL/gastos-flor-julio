@@ -15,15 +15,15 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white rounded-2xl shadow-md p-10 flex flex-col items-center gap-6 w-full max-w-sm">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-md p-10 flex flex-col items-center gap-6 w-full max-w-sm">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Gastos Julio & Flor</h1>
-          <p className="text-gray-500 mt-1 text-sm">Ingresa con tu cuenta de Google</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Gastos Julio & Flor</h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Ingresa con tu cuenta de Google</p>
         </div>
         <button
           onClick={signInWithGoogle}
-          className="flex items-center gap-3 bg-white border border-gray-300 rounded-lg px-6 py-3 text-gray-700 font-medium hover:bg-gray-50 transition w-full justify-center shadow-sm"
+          className="flex items-center gap-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-6 py-3 text-gray-700 dark:text-gray-200 font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition w-full justify-center shadow-sm"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>

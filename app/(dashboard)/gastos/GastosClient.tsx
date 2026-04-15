@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { EXPENSE_COLUMNS, ACCOUNTS, MONTH_NAMES } from '@/lib/utils/accounts'
 import type { PersonalExpense } from '@/lib/supabase/types'
@@ -23,8 +23,13 @@ function expenseType(e: PersonalExpense): string {
   return 'Hogar'
 }
 
+function localDateStr(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 const EMPTY_FORM = {
-  date: new Date().toISOString().split('T')[0],
+  date: localDateStr(),
+  created_at_date: '',
   description: '',
   casita: '', flor_julio: '', julio: '', flor: '', salidas: '',
   power: '', gasolina: '', regalos: '', navidad: '', otros_power: '', entretenimiento: '',
@@ -36,6 +41,7 @@ export default function GastosClient({ initialExpenses, userId }: Props) {
   const [filterMonth, setFilterMonth] = useState<number>(new Date().getMonth() + 1)
   const [filterAccount, setFilterAccount] = useState<string>('all')
   const [filterType, setFilterType] = useState<string>('all')
+  const [filterRegDate, setFilterRegDate] = useState('')
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editExpense, setEditExpense] = useState<PersonalExpense | null>(null)
@@ -43,7 +49,7 @@ export default function GastosClient({ initialExpenses, userId }: Props) {
   const [saving, setSaving] = useState(false)
 
   const filtered = expenses.filter(e => {
-    const month = new Date(e.date).getMonth() + 1
+    const month = new Date(e.date + 'T00:00:00').getMonth() + 1
     if (filterMonth && month !== filterMonth) return false
     if (filterAccount !== 'all') {
       const col = EXPENSE_COLUMNS.find(c => c.account === filterAccount)
@@ -51,6 +57,8 @@ export default function GastosClient({ initialExpenses, userId }: Props) {
     }
     if (filterType === 'personal' && expenseType(e) !== 'Personal') return false
     if (filterType === 'hogar' && expenseType(e) !== 'Hogar') return false
+    if (filterType === 'pendiente' && e.corte_id !== null) return false
+    if (filterRegDate && e.created_at?.slice(0, 10) !== filterRegDate) return false
     if (search && !e.description.toLowerCase().includes(search.toLowerCase())) return false
     return true
   })
@@ -59,7 +67,7 @@ export default function GastosClient({ initialExpenses, userId }: Props) {
 
   function openNew() {
     setEditExpense(null)
-    setForm(EMPTY_FORM)
+    setForm({ ...EMPTY_FORM, date: localDateStr() })
     setShowForm(true)
   }
 
@@ -67,6 +75,7 @@ export default function GastosClient({ initialExpenses, userId }: Props) {
     setEditExpense(e)
     setForm({
       date: e.date,
+      created_at_date: e.created_at?.slice(0, 10) ?? '',
       description: e.description,
       casita: e.casita?.toString() ?? '',
       flor_julio: e.flor_julio?.toString() ?? '',
@@ -82,6 +91,14 @@ export default function GastosClient({ initialExpenses, userId }: Props) {
     })
     setShowForm(true)
   }
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape' && showForm) setShowForm(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [showForm])
 
   async function save(andAnother = false) {
     setSaving(true)
@@ -101,6 +118,10 @@ export default function GastosClient({ initialExpenses, userId }: Props) {
       navidad: form.navidad ? parseFloat(form.navidad) : null,
       otros_power: form.otros_power ? parseFloat(form.otros_power) : null,
       entretenimiento: form.entretenimiento ? parseFloat(form.entretenimiento) : null,
+    }
+
+    if (editExpense && form.created_at_date) {
+      payload.created_at = form.created_at_date + 'T12:00:00.000Z'
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -128,12 +149,14 @@ export default function GastosClient({ initialExpenses, userId }: Props) {
     setExpenses(prev => prev.filter(e => e.id !== id))
   }
 
-  const months = Array.from(new Set(expenses.map(e => new Date(e.date).getMonth() + 1))).sort()
+  const currentMonth = new Date().getMonth() + 1
+  const months = Array.from(new Set([currentMonth, ...expenses.map(e => new Date(e.date + 'T00:00:00').getMonth() + 1)])).sort()
+  const regDates = Array.from(new Set(expenses.map(e => e.created_at?.slice(0, 10)).filter(Boolean) as string[])).sort().reverse()
 
   return (
     <div className="space-y-4 pb-20 sm:pb-0">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">Mis Gastos</h1>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Mis Gastos</h1>
         <button onClick={openNew} className="bg-indigo-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
           + Agregar
         </button>
@@ -141,54 +164,66 @@ export default function GastosClient({ initialExpenses, userId }: Props) {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2">
-        <select className="border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm" value={filterMonth} onChange={e => setFilterMonth(Number(e.target.value))}>
+        <select className="border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm" value={filterMonth} onChange={e => setFilterMonth(Number(e.target.value))}>
           <option value={0}>Todos los meses</option>
           {months.map(m => <option key={m} value={m}>{MONTH_NAMES[m]}</option>)}
         </select>
-        <select className="border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm" value={filterType} onChange={e => setFilterType(e.target.value)}>
+        <select className="border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm" value={filterType} onChange={e => setFilterType(e.target.value)}>
           <option value="all">Todos</option>
           <option value="personal">Personal</option>
           <option value="hogar">Hogar</option>
+          <option value="pendiente">Sin corte</option>
         </select>
-        <select className="border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm" value={filterAccount} onChange={e => setFilterAccount(e.target.value)}>
+        <select className="border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm" value={filterAccount} onChange={e => setFilterAccount(e.target.value)}>
           <option value="all">Todas las cuentas</option>
           {ACCOUNTS.map(a => <option key={a.key} value={a.key}>{a.label}</option>)}
+        </select>
+        <select className="border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm" value={filterRegDate} onChange={e => setFilterRegDate(e.target.value)}>
+          <option value="">Fecha de registro</option>
+          {regDates.map(d => (
+            <option key={d} value={d}>
+              {new Date(d + 'T00:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })}
+            </option>
+          ))}
         </select>
         <input
           type="text"
           placeholder="Buscar..."
-          className="border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm flex-1 min-w-28"
+          className="border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm flex-1 min-w-28"
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
       </div>
 
       {/* Subtotal */}
-      <div className="bg-indigo-50 rounded-xl px-4 py-3 flex justify-between items-center">
-        <span className="text-sm text-indigo-700 font-medium">{filtered.length} gastos</span>
-        <span className="font-bold text-indigo-800">S/ {subtotal.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
+      <div className="bg-indigo-50 dark:bg-indigo-900/30 rounded-xl px-4 py-3 flex justify-between items-center">
+        <span className="text-sm text-indigo-700 dark:text-indigo-400 font-medium">{filtered.length} gastos</span>
+        <span className="font-bold text-indigo-800 dark:text-indigo-400">S/ {subtotal.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
       </div>
 
       {/* Expense list */}
-      <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
         {filtered.length === 0 ? (
-          <p className="p-6 text-center text-gray-400 text-sm">Sin gastos para este filtro</p>
+          <p className="p-6 text-center text-gray-400 dark:text-gray-500 text-sm">Sin gastos para este filtro</p>
         ) : filtered.map(e => (
-          <div key={e.id} className="px-4 py-3 flex items-start justify-between gap-3 hover:bg-gray-50 cursor-pointer" onClick={() => openEdit(e)}>
+          <div key={e.id} className="px-4 py-3 flex items-start justify-between gap-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer" onClick={() => openEdit(e)}>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-800 truncate">{e.description}</p>
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{e.description}</p>
               <div className="flex gap-2 mt-0.5 flex-wrap">
-                <span className="text-xs text-gray-400">{new Date(e.date + 'T00:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}</span>
-                <span className={`text-xs px-1.5 py-0.5 rounded-full ${expenseType(e) === 'Personal' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                <span className="text-xs text-gray-400 dark:text-gray-500" title="Fecha del gasto">{new Date(e.date + 'T00:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}</span>
+                {e.created_at && (
+                  <span className="text-xs text-gray-400 dark:text-gray-500" title="Fecha de registro">· reg. {new Date(e.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}</span>
+                )}
+                <span className={`text-xs px-1.5 py-0.5 rounded-full ${expenseType(e) === 'Personal' ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300' : 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'}`}>
                   {expenseType(e)}
                 </span>
                 {EXPENSE_COLUMNS.filter(c => (e[c.key as keyof PersonalExpense] as number | null)).map(c => (
-                  <span key={c.key} className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full">{c.label}</span>
+                  <span key={c.key} className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded-full">{c.label}</span>
                 ))}
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-gray-800 text-sm whitespace-nowrap">
+              <span className="font-bold text-gray-800 dark:text-gray-200 text-sm whitespace-nowrap">
                 S/ {expenseTotal(e).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
               </span>
               <button onClick={ev => { ev.stopPropagation(); deleteExpense(e.id) }} className="text-red-400 hover:text-red-600 text-xs p-1">✕</button>
@@ -199,33 +234,39 @@ export default function GastosClient({ initialExpenses, userId }: Props) {
 
       {/* Form modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
-              <h2 className="font-semibold text-gray-800">{editExpense ? 'Editar gasto' : 'Nuevo gasto'}</h2>
-              <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-4" onClick={() => setShowForm(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+              <h2 className="font-semibold text-gray-800 dark:text-gray-200">{editExpense ? 'Editar gasto' : 'Nuevo gasto'}</h2>
+              <button onClick={() => setShowForm(false)} className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">✕</button>
             </div>
             <div className="p-5 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-gray-500 font-medium">Fecha</label>
-                  <input type="date" className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
+                  <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Fecha</label>
+                  <input type="date" className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
                 </div>
+                {editExpense && (
+                  <div>
+                    <label className="text-xs text-orange-500 dark:text-orange-400 font-medium">Fecha registro [TEST]</label>
+                    <input type="date" className="mt-1 w-full border border-orange-300 dark:border-orange-600 rounded-lg px-3 py-2 text-sm" value={form.created_at_date} onChange={e => setForm(f => ({ ...f, created_at_date: e.target.value }))} />
+                  </div>
+                )}
               </div>
               <div>
-                <label className="text-xs text-gray-500 font-medium">Descripción</label>
-                <input type="text" className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Ej: Supermercado" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+                <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Descripción</label>
+                <input type="text" className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm" placeholder="Ej: Supermercado" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
               </div>
-              <p className="text-xs text-gray-400 font-medium pt-1">Montos por cuenta (solo llena las que aplican)</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 font-medium pt-1">Montos por cuenta (solo llena las que aplican)</p>
               <div className="grid grid-cols-2 gap-2">
                 {EXPENSE_COLUMNS.map(col => (
                   <div key={col.key}>
-                    <label className="text-xs text-gray-500">{col.label}</label>
+                    <label className="text-xs text-gray-500 dark:text-gray-400">{col.label}</label>
                     <input
                       type="number"
                       step="0.01"
                       placeholder="0.00"
-                      className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+                      className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm"
                       value={form[col.key as keyof typeof form]}
                       onChange={e => setForm(f => ({ ...f, [col.key]: e.target.value }))}
                     />
@@ -233,10 +274,10 @@ export default function GastosClient({ initialExpenses, userId }: Props) {
                 ))}
               </div>
             </div>
-            <div className="px-5 py-4 border-t border-gray-100 flex gap-2 justify-end flex-wrap">
-              <button onClick={() => setShowForm(false)} className="text-sm text-gray-500 px-4 py-2 hover:bg-gray-100 rounded-lg">Cancelar</button>
+            <div className="px-5 py-4 border-t border-gray-100 dark:border-gray-700 flex gap-2 justify-end flex-wrap">
+              <button onClick={() => setShowForm(false)} className="text-sm text-gray-500 dark:text-gray-400 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">Cancelar</button>
               {!editExpense && (
-                <button onClick={() => save(true)} disabled={saving || !form.description} className="border border-indigo-600 text-indigo-600 text-sm px-4 py-2 rounded-lg hover:bg-indigo-50 disabled:opacity-50 transition">
+                <button onClick={() => save(true)} disabled={saving || !form.description} className="border border-indigo-600 dark:border-indigo-500 text-indigo-600 dark:text-indigo-400 text-sm px-4 py-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 disabled:opacity-50 transition">
                   {saving ? '...' : 'Guardar y agregar otra'}
                 </button>
               )}

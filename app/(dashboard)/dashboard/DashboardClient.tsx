@@ -80,28 +80,28 @@ export default function DashboardClient({ expenses, powerEntries }: Props) {
   return (
     <div className="space-y-6 pb-20 sm:pb-0">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
-        <select className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
+        <select className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
           {months.map(m => <option key={m} value={m}>{MONTH_NAMES[m]}</option>)}
         </select>
       </div>
 
       {/* Personal vs hogar */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="bg-purple-50 rounded-xl p-4">
-          <p className="text-xs text-purple-600 font-medium">Personal</p>
-          <p className="text-lg font-bold text-purple-700">S/ {personalTotal.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</p>
+        <div className="bg-purple-50 dark:bg-purple-900/30 rounded-xl p-4">
+          <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">Personal</p>
+          <p className="text-lg font-bold text-purple-700 dark:text-purple-400">S/ {personalTotal.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</p>
         </div>
-        <div className="bg-blue-50 rounded-xl p-4">
-          <p className="text-xs text-blue-600 font-medium">Hogar</p>
-          <p className="text-lg font-bold text-blue-700">S/ {hogarTotal.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</p>
+        <div className="bg-blue-50 dark:bg-blue-900/30 rounded-xl p-4">
+          <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">Hogar</p>
+          <p className="text-lg font-bold text-blue-700 dark:text-blue-400">S/ {hogarTotal.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</p>
         </div>
       </div>
 
       {/* Pie chart */}
       {pieData.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <h2 className="font-semibold text-gray-800 text-sm mb-4">Distribución por cuenta</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+          <h2 className="font-semibold text-gray-800 dark:text-gray-200 text-sm mb-4">Distribución por cuenta</h2>
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
               <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`} labelLine={false}>
@@ -115,8 +115,8 @@ export default function DashboardClient({ expenses, powerEntries }: Props) {
 
       {/* Bar chart */}
       {barData.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <h2 className="font-semibold text-gray-800 text-sm mb-4">Gastos por mes (2026)</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+          <h2 className="font-semibold text-gray-800 dark:text-gray-200 text-sm mb-4">Gastos por mes (2026)</h2>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={barData}>
               <XAxis dataKey="mes" tick={{ fontSize: 11 }} />
@@ -130,18 +130,18 @@ export default function DashboardClient({ expenses, powerEntries }: Props) {
 
       {/* Top 5 */}
       {top5.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-100">
-            <h2 className="font-semibold text-gray-800 text-sm">Top 5 gastos del mes</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+            <h2 className="font-semibold text-gray-800 dark:text-gray-200 text-sm">Top 5 gastos del mes</h2>
           </div>
-          <div className="divide-y divide-gray-50">
+          <div className="divide-y divide-gray-50 dark:divide-gray-700">
             {top5.map((e, i) => (
               <div key={e.id} className="px-4 py-2.5 flex justify-between items-center">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-gray-400 w-4">#{i + 1}</span>
-                  <span className="text-sm text-gray-700 truncate max-w-52">{e.description}</span>
+                  <span className="text-xs font-bold text-gray-400 dark:text-gray-500 w-4">#{i + 1}</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-52">{e.description}</span>
                 </div>
-                <span className="font-bold text-sm text-gray-800">S/ {expenseTotal(e).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
+                <span className="font-bold text-sm text-gray-800 dark:text-gray-200">S/ {expenseTotal(e).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
               </div>
             ))}
           </div>
@@ -150,8 +150,8 @@ export default function DashboardClient({ expenses, powerEntries }: Props) {
 
       {/* Power evolution */}
       {powerLine.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <h2 className="font-semibold text-gray-800 text-sm mb-4">Evolución cuenta Power</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+          <h2 className="font-semibold text-gray-800 dark:text-gray-200 text-sm mb-4">Evolución cuenta Power</h2>
           <ResponsiveContainer width="100%" height={180}>
             <LineChart data={powerLine}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
