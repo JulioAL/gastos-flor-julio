@@ -14,7 +14,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Gastos Julio & Flor",
+  title: {
+    default: "Gastos Julio & Flor",
+    template: "Gastos Julio & Flor | %s",
+  },
   description: "Sistema de gastos personales y presupuesto familiar",
   manifest: "/manifest.json",
   appleWebApp: {

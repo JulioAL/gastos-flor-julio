@@ -60,6 +60,10 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [corteNotes, setCorteNotes] = useState('')
   const [performing, setPerforming] = useState(false)
+  const [settledDateInput, setSettledDateInput] = useState<string>(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  })
   const [expandedCorteId, setExpandedCorteId] = useState<string | null>(null)
   const [revertingId, setRevertingId] = useState<string | null>(null)
 
@@ -75,11 +79,16 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
   useEffect(() => {
     if (!showConfirmModal) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !performing) { setShowConfirmModal(false); setCorteNotes('') }
+      if (e.key === 'Escape' && !performing) { setShowConfirmModal(false); setCorteNotes(''); resetSettledDate() }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [showConfirmModal, performing])
+
+  function resetSettledDate() {
+    const d = new Date()
+    setSettledDateInput(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)
+  }
 
   const [cutoffDate, setCutoffDate] = useState<string>(() => {
     if (pendingExpenses.length > 0) return pendingExpenses[pendingExpenses.length - 1].date
@@ -109,8 +118,8 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
 
   async function realizarCorte() {
     setPerforming(true)
-    const now = new Date()
-    const settledDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    const settledDate = settledDateInput
+    const now = new Date(settledDate + 'T12:00:00')
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const cortesClient = supabase.from('cortes') as any
@@ -595,7 +604,7 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
       {showConfirmModal && (
         <div
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm px-4 pb-6 sm:pb-0"
-          onClick={e => { if (e.target === e.currentTarget && !performing) { setShowConfirmModal(false); setCorteNotes('') } }}
+          onClick={e => { if (e.target === e.currentTarget && !performing) { setShowConfirmModal(false); setCorteNotes(''); resetSettledDate() } }}
         >
           <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-md">
             <div className="px-6 pt-6 pb-4 border-b border-gray-100 dark:border-gray-800">
@@ -603,6 +612,15 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                 {expensesToSettle.length} gastos · {earliestDate && formatDate(earliestDate)} — {formatDate(cutoffDate)}
               </p>
+              <div className="mt-3 flex items-center gap-2">
+                <label className="text-xs font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Fecha del corte</label>
+                <input
+                  type="date"
+                  value={settledDateInput}
+                  onChange={e => setSettledDateInput(e.target.value)}
+                  className="px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
             </div>
             <div className="px-6 py-4">
               <table className="w-full text-sm mb-4">
@@ -647,7 +665,7 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
 
               <div className="flex gap-3">
                 <button
-                  onClick={() => { setShowConfirmModal(false); setCorteNotes('') }}
+                  onClick={() => { setShowConfirmModal(false); setCorteNotes(''); resetSettledDate() }}
                   disabled={performing}
                   className="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
                 >

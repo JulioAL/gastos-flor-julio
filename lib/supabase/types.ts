@@ -202,6 +202,8 @@ export type Database = {
           tab_name: string | null
           year: number
           corte_id: string | null
+          category: string | null
+          subcategory: string | null
           created_at: string
           updated_at: string
         }
@@ -224,6 +226,8 @@ export type Database = {
           tab_name?: string | null
           year?: number
           corte_id?: string | null
+          category?: string | null
+          subcategory?: string | null
         }
         Update: {
           date?: string
@@ -240,6 +244,8 @@ export type Database = {
           otros_power?: number | null
           entretenimiento?: number | null
           corte_id?: string | null
+          category?: string | null
+          subcategory?: string | null
         }
       }
       power_account_entries: {

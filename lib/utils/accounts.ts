@@ -102,3 +102,107 @@ export function computeCorteAccountTotals(
   }
   return totals
 }
+
+// ============================================================
+// Expense Tag Taxonomy
+// ============================================================
+
+export interface ExpenseSubcategory {
+  key: string
+  label: string
+  keywords: string[]
+}
+
+export interface ExpenseCategory {
+  key: string
+  label: string
+  color: string
+  subcategories: ExpenseSubcategory[]
+}
+
+export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
+  { key: 'hogar', label: 'Hogar', color: 'blue', subcategories: [
+    { key: 'alquiler',      label: 'Alquiler',      keywords: ['alquiler', 'renta', 'arriendo'] },
+    { key: 'mantenimiento', label: 'Mantenimiento',  keywords: ['mantenimiento'] },
+    { key: 'servicios',     label: 'Servicios',      keywords: ['internet', 'cable', 'telefono', 'celular', 'wifi', 'servicio luz', 'servicio agua', 'servicio gas', 'reparacion', 'plomero', 'electricista', 'pintura', 'gasfitero'] },
+  ]},
+  { key: 'alimentacion', label: 'Alimentación', color: 'green', subcategories: [
+    { key: 'supermercado',  label: 'Supermercado',   keywords: ['supermercado', 'plaza vea', 'wong', 'tottus', 'vivanda', 'mercado', 'bodega', 'mass tambo', 'tambo'] },
+    { key: 'restaurantes',  label: 'Restaurantes',   keywords: ['restaurant', 'rest.', 'restaurante', 'almuerzo', 'cena', 'desayuno', 'cafeteria', 'pizza', 'burger', 'chifa', 'sushi', 'sangucheria'] },
+    { key: 'delivery',      label: 'Delivery',        keywords: ['delivery', 'rappi', 'pedidosya', 'uber eats', 'dominos'] },
+  ]},
+  { key: 'transporte', label: 'Transporte', color: 'amber', subcategories: [
+    { key: 'gasolina',           label: 'Gasolina',            keywords: ['gaso', 'gasolina', 'combustible', 'grifo', 'gasolinera', 'repsol', 'primax', 'pecsa'] },
+    { key: 'taxi',               label: 'Taxi / Apps',         keywords: ['taxi', 'tacho', 'didi', 'uber', 'cabify', 'indriver', 'beat', 'colectivo'] },
+    { key: 'mant_auto',          label: 'Mantenimiento auto',  keywords: ['llanta', 'aceite motor', 'mecanico', 'taller mecanico', 'lavado auto', 'soat', 'revisión técnica'] },
+    { key: 'seguro_vehicular',   label: 'Seguro vehicular',    keywords: ['seguro auto', 'seguro carro', 'seguro vehicular'] },
+  ]},
+  { key: 'trabajo', label: 'Trabajo', color: 'indigo', subcategories: [
+    { key: 'herramientas',   label: 'Herramientas',        keywords: ['software', 'licencia software', 'herramienta', 'laptop', 'computadora', 'monitor'] },
+    { key: 'cursos_trabajo', label: 'Cursos',              keywords: ['capacitacion', 'seminario', 'diplomado'] },
+    { key: 'suscripciones',  label: 'Suscripciones lab.',  keywords: ['github', 'figma', 'notion', 'slack', 'zoom', 'adobe', 'aws', 'cloud'] },
+  ]},
+  { key: 'finanzas', label: 'Finanzas', color: 'rose', subcategories: [
+    { key: 'intereses',  label: 'Intereses',           keywords: ['interes', 'prestamo', 'credito', 'deuda', 'cuota prestamo'] },
+    { key: 'comisiones', label: 'Comisiones bancarias', keywords: ['comision banco', 'itf', 'mantenimiento cuenta'] },
+  ]},
+  { key: 'compras', label: 'Compras personales', color: 'violet', subcategories: [
+    { key: 'ropa',       label: 'Ropa',        keywords: ['ropa', 'zapatos', 'calzado', 'zapatillas', 'camisa', 'pantalon', 'vestido'] },
+    { key: 'tecnologia', label: 'Tecnología',  keywords: ['electronico', 'tablet', 'auriculares', 'audifonos', 'cargador', 'apple', 'samsung'] },
+    { key: 'cuidado_personal', label: 'Cuidado personal',  keywords: ['corte de cabello', 'nicolini', 'perfume', 'crema', 'hidratante', 'labial', 'esmalte'] },
+    { key: 'gadgets',    label: 'Gadgets',     keywords: ['gadget', 'accesorio tech', 'smartwatch'] },
+  ]},
+  { key: 'entretenimiento', label: 'Entretenimiento', color: 'pink', subcategories: [
+    { key: 'streaming',  label: 'Streaming',  keywords: ['netflix', 'spotify', 'youtube premium', 'disney', 'hbo', 'amazon prime', 'crunchyroll'] },
+    { key: 'cine',       label: 'Cine',       keywords: ['cine', 'cineplanet', 'cinemark', 'uvk'] },
+    { key: 'salidas_ent',label: 'Salidas',    keywords: ['discoteca', 'karaoke', 'boliche'] },
+    { key: 'juegos',     label: 'Juegos',     keywords: ['steam', 'playstation', 'xbox', 'nintendo', 'videojuego'] },
+  ]},
+  { key: 'salud', label: 'Salud', color: 'teal', subcategories: [
+    { key: 'consultas',   label: 'Consultas médicas', keywords: ['doctor', 'medico', 'consulta medica', 'clinica', 'hospital', 'especialista', 'dentista', 'odontologo'] },
+    { key: 'medicinas',   label: 'Medicinas',         keywords: ['farmacia', 'medicamento', 'pastilla', 'vitamina', 'inkafarma', 'mifarma', 'botica'] },
+    { key: 'tratamiento', label: 'Tratamiento',       keywords: ['tratamiento', 'terapia', 'fisioterapia', 'laboratorio clinico', 'radiografia'] },
+  ]},
+  { key: 'educacion', label: 'Educación', color: 'cyan', subcategories: [
+    { key: 'cursos_edu',      label: 'Cursos',          keywords: ['udemy', 'coursera', 'platzi', 'academia', 'clase particular'] },
+    { key: 'libros',          label: 'Libros',          keywords: ['libro', 'libreria', 'kindle', 'audible'] },
+    { key: 'certificaciones', label: 'Certificaciones', keywords: ['certificacion', 'certificado profesional'] },
+  ]},
+  { key: 'viajes', label: 'Viajes', color: 'sky', subcategories: [
+    { key: 'pasajes',    label: 'Pasajes',    keywords: ['pasaje', 'vuelo', 'aerolinea', 'latam', 'avianca', 'cruz del sur', 'oltursa'] },
+    { key: 'hospedaje',  label: 'Hospedaje',  keywords: ['hotel', 'hostal', 'airbnb', 'hospedaje', 'alojamiento'] },
+    { key: 'actividades',label: 'Actividades',keywords: ['tour', 'excursion', 'museo', 'parque tematico'] },
+  ]},
+  { key: 'familia', label: 'Familia', color: 'orange', subcategories: [
+    { key: 'regalos',   label: 'Regalos',        keywords: ['regalo', 'presente', 'cumpleanos', 'dia de la madre', 'dia del padre'] },
+    { key: 'eventos',   label: 'Eventos',        keywords: ['bautizo', 'matrimonio', 'boda', 'quinceanos', 'baby shower', 'evento familiar'] },
+    { key: 'apoyo_fam', label: 'Apoyo familiar', keywords: ['apoyo familiar', 'prestamo familiar'] },
+  ]},
+  { key: 'otros', label: 'Otros', color: 'gray', subcategories: [
+    { key: 'imprevistos', label: 'Imprevistos', keywords: ['imprevisto', 'emergencia imprevista', 'gasto inesperado'] },
+  ]},
+]
+
+// Returns { category, subcategory } keys or null. Longest keyword match wins (more specific wins ties).
+export function detectExpenseTag(description: string): { category: string; subcategory: string } | null {
+  const normalize = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  const normalized = normalize(description)
+  let best: { category: string; subcategory: string } | null = null
+  let bestScore = 0
+  for (const cat of EXPENSE_CATEGORIES) {
+    for (const sub of cat.subcategories) {
+      for (const kw of sub.keywords) {
+        const nkw = normalize(kw)
+        if (normalized.includes(nkw) && nkw.length > bestScore) {
+          bestScore = nkw.length
+          best = { category: cat.key, subcategory: sub.key }
+        }
+      }
+    }
+  }
+  return best
+}
+
+export function getCategoryMeta(key: string): ExpenseCategory | undefined {
+  return EXPENSE_CATEGORIES.find(c => c.key === key)
+}

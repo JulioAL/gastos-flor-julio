@@ -9,7 +9,6 @@ import { useTheme } from './ThemeProvider'
 
 const TABS = [
   { href: '/resumen',   label: 'Resumen' },
-  { href: '/dashboard', label: 'Dashboard' },
   { href: '/gastos',    label: 'Gastos' },
   { href: '/corte',     label: 'Corte' },
   { href: '/cuentas',   label: 'Cuentas' },

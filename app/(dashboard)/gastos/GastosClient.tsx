@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { EXPENSE_COLUMNS, ACCOUNTS, MONTH_NAMES, POWER_COLS } from '@/lib/utils/accounts'
+import { EXPENSE_COLUMNS, ACCOUNTS, MONTH_NAMES, POWER_COLS, EXPENSE_CATEGORIES, detectExpenseTag, getCategoryMeta } from '@/lib/utils/accounts'
 import type { PersonalExpense } from '@/lib/supabase/types'
 
 interface Props {
@@ -91,6 +91,8 @@ const EMPTY_FORM = {
   description: '',
   totalMonto: '',
   splits: [makeSplit()] as Split[],
+  category: '',
+  subcategory: '',
 }
 
 export default function GastosClient({ initialExpenses, userId, isJulio }: Props) {
@@ -101,6 +103,7 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
   const [filterAccount, setFilterAccount] = useState<string>('all')
   const [filterType, setFilterType] = useState<string>('pendiente')
   const [filterRegDate, setFilterRegDate] = useState('')
+  const [filterCategory, setFilterCategory] = useState<string>('all')
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editExpense, setEditExpense] = useState<PersonalExpense | null>(null)
@@ -125,6 +128,7 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
     if (filterType === 'sin_cuenta' && clas !== 'hogar_sin_cuenta') return false
     if (filterType === 'pendiente' && e.corte_id !== null) return false
     if (filterRegDate && e.created_at?.slice(0, 10) !== filterRegDate) return false
+    if (filterCategory !== 'all' && e.category !== filterCategory) return false
     if (search && !e.description.toLowerCase().includes(search.toLowerCase())) return false
     return true
   })
@@ -154,6 +158,8 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
       description: e.description,
       totalMonto: total > 0 ? total.toString() : '',
       splits,
+      category: e.category ?? '',
+      subcategory: e.subcategory ?? '',
     })
     setShowForm(true)
   }
@@ -194,6 +200,8 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
       otros_power: null,
       entretenimiento: null,
       tab_name: null,
+      category: form.category || null,
+      subcategory: form.subcategory || null,
     }
 
     let hogarPendingAmt = 0
@@ -240,7 +248,7 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
     setSaving(false)
     if (andAnother) {
       setEditExpense(null)
-      setForm({ ...EMPTY_FORM, date: form.date, splits: [makeSplit()] })
+      setForm({ ...EMPTY_FORM, date: form.date, splits: [makeSplit()], category: '', subcategory: '' })
     } else {
       setShowForm(false)
     }
@@ -341,6 +349,12 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
             </option>
           ))}
         </select>
+        <select className="border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm" value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
+          <option value="all">Todas las categorías</option>
+          {EXPENSE_CATEGORIES.map(cat => (
+            <option key={cat.key} value={cat.key}>{cat.label}</option>
+          ))}
+        </select>
         <input
           type="text"
           placeholder="Buscar..."
@@ -428,6 +442,16 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
                 {e.created_at && (
                   <span className="text-xs text-gray-400 dark:text-gray-500">· reg. {new Date(e.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}</span>
                 )}
+                {(e.category || e.subcategory) && (() => {
+                  const catMeta = getCategoryMeta(e.category ?? '')
+                  const subLabel = catMeta?.subcategories.find(s => s.key === e.subcategory)?.label
+                  const label = subLabel ?? catMeta?.label ?? e.category
+                  return (
+                    <span className="text-xs px-1.5 py-0.5 rounded-full bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-700">
+                      {label}
+                    </span>
+                  )
+                })()}
                 {splits.map(sp => {
                   const amt = parseFloat(sp.monto)
                   const amtLabel = isMulti && amt > 0 ? ` · S/ ${amt.toLocaleString('es-PE', { minimumFractionDigits: 2 })}` : ''
@@ -524,7 +548,59 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
               </div>
               <div>
                 <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Descripción</label>
-                <input type="text" className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm" placeholder="Ej: Supermercado" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+                <input
+                  type="text"
+                  className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
+                  placeholder="Ej: Supermercado"
+                  value={form.description}
+                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                  onBlur={e => {
+                    if (!form.category && e.target.value.trim()) {
+                      const detected = detectExpenseTag(e.target.value)
+                      if (detected) setForm(f => ({ ...f, ...detected }))
+                    }
+                  }}
+                />
+              </div>
+
+              {/* Category / Tag */}
+              <div>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Categoría</label>
+                  {(form.category || form.subcategory) && (
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, category: '', subcategory: '' }))}
+                      className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    >
+                      Limpiar
+                    </button>
+                  )}
+                </div>
+                <div className="mt-1 flex gap-2">
+                  <select
+                    className="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800"
+                    value={form.category}
+                    onChange={e => setForm(f => ({ ...f, category: e.target.value, subcategory: '' }))}
+                  >
+                    <option value="">Sin categoría</option>
+                    {EXPENSE_CATEGORIES.map(cat => (
+                      <option key={cat.key} value={cat.key}>{cat.label}</option>
+                    ))}
+                  </select>
+                  {form.category && (
+                    <select
+                      className="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800"
+                      value={form.subcategory}
+                      onChange={e => setForm(f => ({ ...f, subcategory: e.target.value }))}
+                    >
+                      <option value="">Subcategoría...</option>
+                      {(getCategoryMeta(form.category)?.subcategories ?? []).map(sub => (
+                        <option key={sub.key} value={sub.key}>{sub.label}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
               </div>
 
               {/* Total amount */}
