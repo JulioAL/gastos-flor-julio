@@ -11,7 +11,7 @@ export default async function CuentasPage() {
   const supabase = await createClient()
 
   const [{ data: months }, { data: powerEntries }] = await Promise.all([
-    supabase.from('budget_months').select('*').eq('year', 2026).order('month'),
+    supabase.from('budget_months').select('*').order('year').order('month'),
     supabase.from('power_account_entries').select(POWER_COLS.join(',')),
   ])
 
