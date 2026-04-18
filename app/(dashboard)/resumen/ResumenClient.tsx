@@ -9,6 +9,8 @@ import type { BudgetMonth, BudgetIncome, BudgetExpense, BudgetTransfer, Personal
 
 const CHART_COLORS = ['#6366f1','#22c55e','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#14b8a6','#f97316','#84cc16']
 
+const POWER_COLS = ['carro','ahorro_casa','ahorro_extra','sueldo','cts','intereses_ganados','gratificaciones','afp','emergencia','jf_baby','bonos_utilidades','salud'] as const
+
 interface Props {
   months: BudgetMonth[]
   expenses: PersonalExpense[]
@@ -38,6 +40,16 @@ export default function ResumenClient({ months, expenses }: Props) {
   const [transfers, setTransfers] = useState<BudgetTransfer[]>([])
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'hogar' | 'personal'>('hogar')
+  const [powerTotal, setPowerTotal] = useState(0)
+
+  useEffect(() => {
+    supabase.from('power_account_entries').select(POWER_COLS.join(','))
+      .then(({ data }) => {
+        const total = (data ?? []).reduce((sum: number, e: Record<string, number | null>) =>
+          sum + POWER_COLS.reduce((s, col) => s + (e[col] ?? 0), 0), 0)
+        setPowerTotal(total)
+      })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedMonthNum = months.find(m => m.id === selectedMonthId)?.month ?? currentMonth
 
@@ -67,6 +79,20 @@ export default function ResumenClient({ months, expenses }: Props) {
   const totalBudgeted = budgetExpenses.reduce((s, e) => s + (e.amount ?? 0), 0)
   const totalReal = monthExpenses.reduce((s, e) => s + expenseTotal(e), 0)
   const balance = totalIncome - totalReal
+
+  // Scotiabank account balances (same logic as CuentasClient)
+  const scotByAccount = useMemo(() => {
+    const r: Record<string, number> = {}
+    for (const acc of ACCOUNTS) {
+      if (acc.key === 'power') continue
+      const direct = budgetExpenses.find(e => e.account === acc.key && e.category === acc.key)
+      r[acc.key] = direct
+        ? (direct.amount ?? 0)
+        : budgetExpenses.filter(e => e.account === acc.key && e.category !== acc.key)
+            .reduce((s, e) => s + (e.amount ?? 0), 0)
+    }
+    return r
+  }, [budgetExpenses])
 
   // Budget by account
   const budgetByAccount = useMemo(() => {
@@ -216,6 +242,27 @@ export default function ResumenClient({ months, expenses }: Props) {
             <div className={`${balance >= 0 ? 'bg-teal-50 dark:bg-teal-900/30' : 'bg-orange-50 dark:bg-orange-900/30'} rounded-xl p-4`}>
               <p className={`text-xs font-medium ${balance >= 0 ? 'text-teal-600 dark:text-teal-400' : 'text-orange-600 dark:text-orange-400'}`}>Balance</p>
               <p className={`text-base font-bold ${balance >= 0 ? 'text-teal-700 dark:text-teal-400' : 'text-orange-700 dark:text-orange-400'}`}>{fmt(balance)}</p>
+            </div>
+          </div>
+
+          {/* Scotiabank accounts */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+              <h2 className="font-semibold text-gray-800 dark:text-gray-200 text-sm">Resumen por cuenta Scotiabank</h2>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-gray-100 dark:divide-gray-700">
+              {ACCOUNTS.map(acc => {
+                const amt = acc.key === 'power' ? powerTotal : (scotByAccount[acc.key] ?? 0)
+                return (
+                  <div key={acc.key} className="p-4">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{acc.label}</p>
+                    <p className="text-lg font-bold text-gray-800 dark:text-gray-200 mt-1">
+                      S/ {amt.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                    </p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{acc.description}</p>
+                  </div>
+                )
+              })}
             </div>
           </div>
 

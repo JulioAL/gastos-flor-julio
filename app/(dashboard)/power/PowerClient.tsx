@@ -29,6 +29,7 @@ export default function PowerClient({ initialEntries }: Props) {
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [filterYear, setFilterYear] = useState<number>(2026)
+  const [filterDesc, setFilterDesc] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [chartCol, setChartCol] = useState<string>('total')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -42,10 +43,14 @@ export default function PowerClient({ initialEntries }: Props) {
   )
 
   // Filtered entries for the table (only affects display)
-  const filteredEntries = useMemo(() =>
-    filterYear === 0 ? entries : entries.filter(e => e.entry_year === filterYear),
-    [entries, filterYear]
-  )
+  const filteredEntries = useMemo(() => {
+    let result = filterYear === 0 ? entries : entries.filter(e => e.entry_year === filterYear)
+    if (filterDesc.trim()) {
+      const q = filterDesc.trim().toLowerCase()
+      result = result.filter(e => e.description?.toLowerCase().includes(q))
+    }
+    return result
+  }, [entries, filterYear, filterDesc])
 
   // Totals always calculated from ALL entries regardless of filter
   const totals = useMemo(() => {
@@ -247,6 +252,13 @@ export default function PowerClient({ initialEntries }: Props) {
               <option value={0}>Todos los años</option>
               {years.map(y => <option key={y} value={y}>{y}</option>)}
             </select>
+            <input
+              type="text"
+              placeholder="Buscar descripción..."
+              value={filterDesc}
+              onChange={e => setFilterDesc(e.target.value)}
+              className="border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1 text-xs bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 w-44"
+            />
             <button
               onClick={() => { setSelectMode(m => !m); setSelectedIds(new Set()) }}
               className={`text-xs px-3 py-1 rounded-lg border transition ${selectMode ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-400 text-indigo-700 dark:text-indigo-400' : 'border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
@@ -336,11 +348,11 @@ export default function PowerClient({ initialEntries }: Props) {
                 )
               })}
             </tbody>
-            <tfoot className="sticky bottom-0">
-              <tr className="bg-indigo-50 dark:bg-indigo-900/40 border-t-2 border-indigo-200 dark:border-indigo-700 font-bold">
-                <td className="px-3 py-2 text-indigo-800 dark:text-indigo-300 sticky left-0 z-10 bg-indigo-50 dark:bg-indigo-900/40 w-12 min-w-[48px]">TOT.</td>
-                <td className="px-3 py-2 sticky left-12 z-10 bg-indigo-50 dark:bg-indigo-900/40 w-24 min-w-[96px]"></td>
-                <td className="px-3 py-2 sticky left-36 z-10 bg-indigo-50 dark:bg-indigo-900/40 w-32 min-w-[128px] border-r border-indigo-200 dark:border-indigo-700"></td>
+            <tfoot className="sticky bottom-0 z-10">
+              <tr className="bg-indigo-50 dark:bg-indigo-950 border-t-2 border-indigo-200 dark:border-indigo-700 font-bold">
+                <td className="px-3 py-2 text-indigo-800 dark:text-indigo-300 sticky left-0 z-10 bg-indigo-50 dark:bg-indigo-950 w-12 min-w-[48px]">TOT.</td>
+                <td className="px-3 py-2 sticky left-12 z-10 bg-indigo-50 dark:bg-indigo-950 w-24 min-w-[96px]"></td>
+                <td className="px-3 py-2 sticky left-36 z-10 bg-indigo-50 dark:bg-indigo-950 w-32 min-w-[128px] border-r border-indigo-200 dark:border-indigo-700"></td>
                 {POWER_COLS.map(c => (
                   <td key={c.key} className={`px-3 py-2 text-right whitespace-nowrap ${(totals[c.key] ?? 0) >= 0 ? 'text-indigo-700 dark:text-indigo-400' : 'text-red-600 dark:text-red-400'}`}>
                     S/ {(totals[c.key] ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}

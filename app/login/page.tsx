@@ -1,17 +1,35 @@
 'use client'
 
+import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
   const supabase = createClient()
+  const router = useRouter()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
   async function signInWithGoogle() {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
     })
+  }
+
+  async function signInWithEmail(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) {
+      setError('Email o contraseña incorrectos')
+    } else {
+      router.push('/resumen')
+    }
+    setLoading(false)
   }
 
   return (
@@ -19,8 +37,42 @@ export default function LoginPage() {
       <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-md p-10 flex flex-col items-center gap-6 w-full max-w-sm">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Gastos Julio & Flor</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Ingresa con tu cuenta de Google</p>
+          <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Ingresa con tu cuenta</p>
         </div>
+
+        <form onSubmit={signInWithEmail} className="w-full flex flex-col gap-3">
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            required
+            className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2.5 text-sm text-gray-800 dark:text-gray-200 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          />
+          <input
+            type="password"
+            placeholder="Contraseña"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            required
+            className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2.5 text-sm text-gray-800 dark:text-gray-200 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          />
+          {error && <p className="text-xs text-red-500">{error}</p>}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-medium rounded-lg px-4 py-2.5 text-sm transition"
+          >
+            {loading ? 'Ingresando...' : 'Ingresar'}
+          </button>
+        </form>
+
+        <div className="flex items-center gap-3 w-full">
+          <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+          <span className="text-xs text-gray-400">o</span>
+          <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+        </div>
+
         <button
           onClick={signInWithGoogle}
           className="flex items-center gap-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-6 py-3 text-gray-700 dark:text-gray-200 font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition w-full justify-center shadow-sm"

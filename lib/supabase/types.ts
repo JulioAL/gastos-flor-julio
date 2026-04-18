@@ -29,6 +29,7 @@ export type Database = {
           month: number
           tab_name: string
           created_at: string
+          locked: boolean
         }
         Insert: {
           id?: string
@@ -36,11 +37,13 @@ export type Database = {
           month: number
           tab_name: string
           created_at?: string
+          locked?: boolean
         }
         Update: {
           year?: number
           month?: number
           tab_name?: string
+          locked?: boolean
         }
       }
       budget_income: {
@@ -248,6 +251,53 @@ export type Database = {
           subcategory?: string | null
         }
       }
+      payment_distribution: {
+        Row: {
+          id: string
+          gasto_egreso: string
+          julio: number | null
+          flor: number | null
+          casita: number | null
+          power: number | null
+          limpieza: number | null
+          regalos: number | null
+          flor_y_julio: number | null
+          navidad: number | null
+          gasolina: number | null
+          entretenimiento: number | null
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          gasto_egreso?: string
+          julio?: number | null
+          flor?: number | null
+          casita?: number | null
+          power?: number | null
+          limpieza?: number | null
+          regalos?: number | null
+          flor_y_julio?: number | null
+          navidad?: number | null
+          gasolina?: number | null
+          entretenimiento?: number | null
+          sort_order?: number
+        }
+        Update: {
+          gasto_egreso?: string
+          julio?: number | null
+          flor?: number | null
+          casita?: number | null
+          power?: number | null
+          limpieza?: number | null
+          regalos?: number | null
+          flor_y_julio?: number | null
+          navidad?: number | null
+          gasolina?: number | null
+          entretenimiento?: number | null
+          sort_order?: number
+        }
+      }
       power_account_entries: {
         Row: {
           id: string
@@ -320,6 +370,7 @@ export type BudgetEntertainmentDetail = Database['public']['Tables']['budget_ent
 export type BudgetTransfer = Database['public']['Tables']['budget_transfers']['Row']
 export type PersonalExpense = Database['public']['Tables']['personal_expenses']['Row']
 export type PowerAccountEntry = Database['public']['Tables']['power_account_entries']['Row']
+export type PaymentDistributionRow = Database['public']['Tables']['payment_distribution']['Row']
 export type Corte = Database['public']['Tables']['cortes']['Row']
 export type CorteAccountTotal = Database['public']['Tables']['corte_account_totals']['Row']
 export type CorteWithTotals = Corte & { corte_account_totals: CorteAccountTotal[] }

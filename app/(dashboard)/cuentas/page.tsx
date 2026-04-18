@@ -10,7 +10,10 @@ const POWER_COLS = [
 export default async function CuentasPage() {
   const supabase = await createClient()
 
-  const [{ data: months }, { data: powerEntries }] = await Promise.all([
+  const [
+    { data: months },
+    { data: powerEntries },
+  ] = await Promise.all([
     supabase.from('budget_months').select('*').order('year').order('month'),
     supabase.from('power_account_entries').select(POWER_COLS.join(',')),
   ])
@@ -19,5 +22,10 @@ export default async function CuentasPage() {
     return sum + POWER_COLS.reduce((s, col) => s + (((e as Record<string, number | null>)[col]) ?? 0), 0)
   }, 0)
 
-  return <CuentasClient months={months ?? []} powerTotal={powerTotal} />
+  return (
+    <CuentasClient
+      initialMonths={months ?? []}
+      powerTotal={powerTotal}
+    />
+  )
 }

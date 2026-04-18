@@ -8,6 +8,7 @@ export default async function GastosPage() {
   const { data: expenses } = await supabase
     .from('personal_expenses')
     .select('*')
+    .eq('user_id', user!.id)
     .eq('year', 2026)
     .order('date', { ascending: false })
 
