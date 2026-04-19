@@ -207,6 +207,7 @@ export type Database = {
           corte_id: string | null
           category: string | null
           subcategory: string | null
+          account_type: string
           created_at: string
           updated_at: string
         }
@@ -231,6 +232,7 @@ export type Database = {
           corte_id?: string | null
           category?: string | null
           subcategory?: string | null
+          account_type?: string
         }
         Update: {
           date?: string
@@ -249,6 +251,7 @@ export type Database = {
           corte_id?: string | null
           category?: string | null
           subcategory?: string | null
+          account_type?: string
         }
       }
       payment_distribution: {

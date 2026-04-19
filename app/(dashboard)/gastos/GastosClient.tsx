@@ -93,6 +93,7 @@ const EMPTY_FORM = {
   splits: [makeSplit()] as Split[],
   category: '',
   subcategory: '',
+  accountType: 'credito' as 'credito' | 'debito',
 }
 
 export default function GastosClient({ initialExpenses, userId, isJulio }: Props) {
@@ -102,6 +103,7 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
   const [filterMonth, setFilterMonth] = useState<number>(0)
   const [filterAccount, setFilterAccount] = useState<string>('all')
   const [filterType, setFilterType] = useState<string>('pendiente')
+  const [filterAccountType, setFilterAccountType] = useState<string>('all')
   const [filterRegDate, setFilterRegDate] = useState('')
   const [filterCategory, setFilterCategory] = useState<string>('all')
   const [search, setSearch] = useState('')
@@ -129,6 +131,7 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
     if (filterType === 'pendiente' && e.corte_id !== null) return false
     if (filterRegDate && e.created_at?.slice(0, 10) !== filterRegDate) return false
     if (filterCategory !== 'all' && e.category !== filterCategory) return false
+    if (filterAccountType !== 'all' && (e.account_type ?? 'credito') !== filterAccountType) return false
     if (search && !e.description.toLowerCase().includes(search.toLowerCase())) return false
     return true
   })
@@ -160,6 +163,7 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
       splits,
       category: e.category ?? '',
       subcategory: e.subcategory ?? '',
+      accountType: (e.account_type ?? 'credito') as 'credito' | 'debito',
     })
     setShowForm(true)
   }
@@ -202,6 +206,7 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
       tab_name: null,
       category: form.category || null,
       subcategory: form.subcategory || null,
+      account_type: form.accountType,
     }
 
     let hogarPendingAmt = 0
@@ -355,6 +360,11 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
             <option key={cat.key} value={cat.key}>{cat.label}</option>
           ))}
         </select>
+        <select className="border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm" value={filterAccountType} onChange={e => setFilterAccountType(e.target.value)}>
+          <option value="all">Crédito y débito</option>
+          <option value="credito">Crédito</option>
+          <option value="debito">Débito</option>
+        </select>
         <input
           type="text"
           placeholder="Buscar..."
@@ -439,6 +449,9 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
               <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{e.description}</p>
               <div className="flex gap-1.5 mt-0.5 flex-wrap items-center">
                 <span className="text-xs text-gray-400 dark:text-gray-500">{new Date(e.date + 'T00:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}</span>
+                <span className={`text-xs px-1.5 py-0.5 rounded-full border font-medium ${(e.account_type ?? 'credito') === 'credito' ? 'bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 border-violet-200 dark:border-violet-700' : 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-700'}`}>
+                  {(e.account_type ?? 'credito') === 'credito' ? 'Crédito' : 'Débito'}
+                </span>
                 {e.created_at && (
                   <span className="text-xs text-gray-400 dark:text-gray-500">· reg. {new Date(e.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}</span>
                 )}
@@ -546,6 +559,25 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
                   </div>
                 )}
               </div>
+              <div>
+                <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Tipo de cuenta</label>
+                <div className="mt-1.5 flex gap-4">
+                  {(['credito', 'debito'] as const).map(type => (
+                    <label key={type} className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={form.accountType === type}
+                        onChange={() => setForm(f => ({ ...f, accountType: type }))}
+                        className="w-4 h-4 rounded accent-indigo-600"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300 capitalize">
+                        Cuenta {type === 'credito' ? 'crédito' : 'débito'}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
               <div>
                 <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Descripción</label>
                 <input

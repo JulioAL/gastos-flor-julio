@@ -13,7 +13,8 @@ const POWER_COLS = ['carro','ahorro_casa','ahorro_extra','sueldo','cts','interes
 
 interface Props {
   months: BudgetMonth[]
-  expenses: PersonalExpense[]
+  expenses: PersonalExpense[]       // solo el usuario actual — para tab personal
+  allExpenses: PersonalExpense[]    // todos los usuarios — para tab hogar
 }
 
 function isHogarPending(e: PersonalExpense): boolean {
@@ -30,7 +31,7 @@ function fmt(n: number) {
   return `S/ ${n.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`
 }
 
-export default function ResumenClient({ months, expenses }: Props) {
+export default function ResumenClient({ months, expenses, allExpenses }: Props) {
   const supabase = createClient()
   const currentMonth = new Date().getMonth() + 1
   const defaultMonth = months.find(m => m.month === currentMonth) ?? months[months.length - 1]
@@ -40,6 +41,15 @@ export default function ResumenClient({ months, expenses }: Props) {
   const [transfers, setTransfers] = useState<BudgetTransfer[]>([])
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'hogar' | 'personal'>('hogar')
+  const [isDark, setIsDark] = useState(false)
+
+  useEffect(() => {
+    const check = () => setIsDark(document.documentElement.classList.contains('dark'))
+    check()
+    const obs = new MutationObserver(check)
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => obs.disconnect()
+  }, [])
   const [powerTotal, setPowerTotal] = useState(0)
 
   useEffect(() => {
@@ -68,7 +78,13 @@ export default function ResumenClient({ months, expenses }: Props) {
     })
   }, [selectedMonthId])
 
-  // Real expenses for selected month
+  // All users' expenses for selected month — used for hogar tab
+  const allMonthExpenses = useMemo(() =>
+    allExpenses.filter(e => new Date(e.date + 'T00:00:00').getMonth() + 1 === selectedMonthNum),
+    [allExpenses, selectedMonthNum]
+  )
+
+  // Current user's expenses for selected month — used for personal tab
   const monthExpenses = useMemo(() =>
     expenses.filter(e => new Date(e.date + 'T00:00:00').getMonth() + 1 === selectedMonthNum),
     [expenses, selectedMonthNum]
@@ -103,11 +119,11 @@ export default function ResumenClient({ months, expenses }: Props) {
     return r
   }, [budgetExpenses])
 
-  // Real by account (using CORTE_ACCOUNT_GROUPS mapping)
+  // Real by account (using CORTE_ACCOUNT_GROUPS mapping) — all users for hogar
   const realByAccount = useMemo(() => {
     const r: Record<string, number> = {}
     let pending = 0
-    for (const e of monthExpenses) {
+    for (const e of allMonthExpenses) {
       if (isHogarPending(e)) { pending += hogarPendingAmount(e); continue }
       for (const group of CORTE_ACCOUNT_GROUPS) {
         for (const col of group.expenseColumns) {
@@ -118,7 +134,7 @@ export default function ResumenClient({ months, expenses }: Props) {
     }
     if (pending > 0) r['_pending'] = pending
     return r
-  }, [monthExpenses])
+  }, [allMonthExpenses])
 
   // Accounts that appear in either budget or real
   const comparisonAccounts = useMemo(() => {
@@ -126,10 +142,10 @@ export default function ResumenClient({ months, expenses }: Props) {
     return ACCOUNTS.filter(a => keys.has(a.key))
   }, [budgetByAccount, realByAccount])
 
-  // Hogar pie: by account column
+  // Hogar pie: by account column — all users
   const hogarPieData = useMemo(() => {
     const totals: Record<string, number> = {}
-    for (const e of monthExpenses) {
+    for (const e of allMonthExpenses) {
       for (const col of EXPENSE_COLUMNS) {
         if (col.key === 'julio' || col.key === 'flor') continue
         const val = (e[col.key as keyof PersonalExpense] as number | null) ?? 0
@@ -138,7 +154,7 @@ export default function ResumenClient({ months, expenses }: Props) {
       if (isHogarPending(e)) totals['Sin cuenta'] = (totals['Sin cuenta'] ?? 0) + hogarPendingAmount(e)
     }
     return Object.entries(totals).map(([name, value]) => ({ name, value: Math.round(value * 100) / 100 })).sort((a, b) => b.value - a.value)
-  }, [monthExpenses])
+  }, [allMonthExpenses])
 
   // Personal pie: by semantic category tag
   const personalPieData = useMemo(() => {
@@ -152,10 +168,18 @@ export default function ResumenClient({ months, expenses }: Props) {
     return Object.entries(totals).map(([name, value]) => ({ name, value: Math.round(value * 100) / 100 })).sort((a, b) => b.value - a.value)
   }, [monthExpenses])
 
-  // Hogar bar: by semantic category tag
+  function subcatLabel(e: PersonalExpense): string {
+    const catMeta = getCategoryMeta(e.category ?? '')
+    const catLbl = catMeta?.label ?? e.category ?? 'Sin categoría'
+    if (!e.subcategory) return catLbl
+    const subLbl = catMeta?.subcategories.find(s => s.key === e.subcategory)?.label
+    return subLbl ? `${catLbl} · ${subLbl}` : catLbl
+  }
+
+  // Hogar bar: by category + subcategory — all users
   const hogarTagBar = useMemo(() => {
     const totals: Record<string, number> = {}
-    for (const e of monthExpenses) {
+    for (const e of allMonthExpenses) {
       let hogarAmt = 0
       for (const col of EXPENSE_COLUMNS) {
         if (col.key === 'julio' || col.key === 'flor') continue
@@ -163,19 +187,19 @@ export default function ResumenClient({ months, expenses }: Props) {
       }
       if (isHogarPending(e)) hogarAmt += hogarPendingAmount(e)
       if (hogarAmt <= 0) continue
-      const label = e.category ? (getCategoryMeta(e.category)?.label ?? e.category) : 'Sin categoría'
+      const label = e.category ? subcatLabel(e) : 'Sin categoría'
       totals[label] = (totals[label] ?? 0) + hogarAmt
     }
     return Object.entries(totals).map(([cat, total]) => ({ cat, total: Math.round(total * 100) / 100 })).sort((a, b) => b.total - a.total)
-  }, [monthExpenses])
+  }, [allMonthExpenses])
 
-  // Personal bar: by semantic category tag
+  // Personal bar: by category + subcategory
   const personalTagBar = useMemo(() => {
     const totals: Record<string, number> = {}
     for (const e of monthExpenses) {
       const amt = (e.julio ?? 0) + (e.flor ?? 0)
       if (amt <= 0) continue
-      const label = e.category ? (getCategoryMeta(e.category)?.label ?? e.category) : 'Sin categoría'
+      const label = e.category ? subcatLabel(e) : 'Sin categoría'
       totals[label] = (totals[label] ?? 0) + amt
     }
     return Object.entries(totals).map(([cat, total]) => ({ cat, total: Math.round(total * 100) / 100 })).sort((a, b) => b.total - a.total)
@@ -189,9 +213,9 @@ export default function ResumenClient({ months, expenses }: Props) {
       return EXPENSE_COLUMNS.filter(c => c.key !== 'julio' && c.key !== 'flor')
         .reduce((s, c) => s + ((e[c.key as keyof PersonalExpense] as number | null) ?? 0), 0)
     }
-    return [...monthExpenses].filter(e => hogarAmt(e) > 0).sort((a, b) => hogarAmt(b) - hogarAmt(a)).slice(0, 5)
+    return [...allMonthExpenses].filter(e => hogarAmt(e) > 0).sort((a, b) => hogarAmt(b) - hogarAmt(a)).slice(0, 5)
       .map(e => ({ e, amt: hogarAmt(e) }))
-  }, [monthExpenses])
+  }, [allMonthExpenses])
 
   // Top 5 personal expenses (sorted by personal amount)
   const personalTop5 = useMemo(() => {
@@ -359,18 +383,21 @@ export default function ResumenClient({ months, expenses }: Props) {
                           label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`} labelLine={false}>
                           {hogarPieData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                         </Pie>
-                        <Tooltip formatter={(v) => fmt(Number(v))} />
+                        <Tooltip formatter={(v) => fmt(Number(v))} contentStyle={{ backgroundColor: isDark ? '#1f2937' : '#fff', border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`, borderRadius: 8, color: isDark ? '#f9fafb' : '#111827' }} />
                       </PieChart>
                     </ResponsiveContainer>
+                    <p className="text-center text-sm font-semibold text-gray-700 dark:text-gray-300 mt-1">
+                      Total: {fmt(hogarPieData.reduce((s, d) => s + d.value, 0))}
+                    </p>
                   </Section>
                 )}
                 {hogarTagBar.length > 0 && (
                   <Section title="Por categoría">
-                    <ResponsiveContainer width="100%" height={200}>
+                    <ResponsiveContainer width="100%" height={Math.max(200, hogarTagBar.length * 30)}>
                       <BarChart data={hogarTagBar} layout="vertical" margin={{ left: 8, right: 16 }}>
-                        <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={v => `S/${v}`} />
-                        <YAxis type="category" dataKey="cat" tick={{ fontSize: 11 }} width={90} />
-                        <Tooltip formatter={(v) => fmt(Number(v))} />
+                        <XAxis type="number" tick={{ fontSize: 10, fill: isDark ? '#9ca3af' : '#6b7280' }} tickFormatter={v => `S/${v}`} />
+                        <YAxis type="category" dataKey="cat" tick={{ fontSize: 10, fill: isDark ? '#d1d5db' : '#374151' }} width={130} />
+                        <Tooltip formatter={(v) => fmt(Number(v))} contentStyle={{ backgroundColor: isDark ? '#1f2937' : '#fff', border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`, borderRadius: 8, color: isDark ? '#f9fafb' : '#111827' }} />
                         <Bar dataKey="total" fill="#6366f1" radius={[0, 4, 4, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
@@ -407,18 +434,21 @@ export default function ResumenClient({ months, expenses }: Props) {
                           label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`} labelLine={false}>
                           {personalPieData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                         </Pie>
-                        <Tooltip formatter={(v) => fmt(Number(v))} />
+                        <Tooltip formatter={(v) => fmt(Number(v))} contentStyle={{ backgroundColor: isDark ? '#1f2937' : '#fff', border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`, borderRadius: 8, color: isDark ? '#f9fafb' : '#111827' }} />
                       </PieChart>
                     </ResponsiveContainer>
+                    <p className="text-center text-sm font-semibold text-gray-700 dark:text-gray-300 mt-1">
+                      Total: {fmt(personalPieData.reduce((s, d) => s + d.value, 0))}
+                    </p>
                   </Section>
                 )}
                 {personalTagBar.length > 0 && (
                   <Section title="Por categoría">
-                    <ResponsiveContainer width="100%" height={200}>
+                    <ResponsiveContainer width="100%" height={Math.max(200, personalTagBar.length * 30)}>
                       <BarChart data={personalTagBar} layout="vertical" margin={{ left: 8, right: 16 }}>
-                        <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={v => `S/${v}`} />
-                        <YAxis type="category" dataKey="cat" tick={{ fontSize: 11 }} width={90} />
-                        <Tooltip formatter={(v) => fmt(Number(v))} />
+                        <XAxis type="number" tick={{ fontSize: 10, fill: isDark ? '#9ca3af' : '#6b7280' }} tickFormatter={v => `S/${v}`} />
+                        <YAxis type="category" dataKey="cat" tick={{ fontSize: 10, fill: isDark ? '#d1d5db' : '#374151' }} width={130} />
+                        <Tooltip formatter={(v) => fmt(Number(v))} contentStyle={{ backgroundColor: isDark ? '#1f2937' : '#fff', border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`, borderRadius: 8, color: isDark ? '#f9fafb' : '#111827' }} />
                         <Bar dataKey="total" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
                       </BarChart>
                     </ResponsiveContainer>

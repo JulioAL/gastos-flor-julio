@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { CORTE_ACCOUNT_GROUPS, computeCorteAccountTotals, MONTH_NAMES } from '@/lib/utils/accounts'
 import type { PersonalExpense, CorteWithTotals } from '@/lib/supabase/types'
@@ -65,7 +65,24 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   })
   const [expandedCorteId, setExpandedCorteId] = useState<string | null>(null)
+  const [expandedCorteAccount, setExpandedCorteAccount] = useState<string | null>(null)
+  const [corteExpensesCache, setCorteExpensesCache] = useState<Record<string, PersonalExpense[]>>({})
+  const [loadingCorteExpenses, setLoadingCorteExpenses] = useState(false)
   const [revertingId, setRevertingId] = useState<string | null>(null)
+
+  async function openCorte(corteId: string | null) {
+    setExpandedCorteAccount(null)
+    setExpandedCorteId(corteId)
+    if (!corteId || corteExpensesCache[corteId]) return
+    setLoadingCorteExpenses(true)
+    const { data } = await supabase
+      .from('personal_expenses')
+      .select('*')
+      .eq('corte_id', corteId)
+      .order('date', { ascending: true })
+    setCorteExpensesCache(prev => ({ ...prev, [corteId]: data ?? [] }))
+    setLoadingCorteExpenses(false)
+  }
 
   async function revertCorte(corteId: string) {
     if (!confirm('¿Revertir este corte? Los gastos volverán a quedar pendientes.')) return
@@ -524,6 +541,7 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
             {localCortes.map(corte => {
               const corteTotal = corte.corte_account_totals.reduce((s, t) => s + t.total_amount, 0)
               const isOpen = expandedCorteId === corte.id
+              const corteExpenses = corteExpensesCache[corte.id] ?? []
               return (
                 <div
                   key={corte.id}
@@ -531,7 +549,7 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
                 >
                   <div className="flex items-center">
                     <button
-                      onClick={() => setExpandedCorteId(isOpen ? null : corte.id)}
+                      onClick={() => openCorte(isOpen ? null : corte.id)}
                       className="flex-1 flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition"
                     >
                       <div>
@@ -562,35 +580,65 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
                       {revertingId === corte.id ? '...' : 'Revertir'}
                     </button>
                   </div>
+
                   {isOpen && (
                     <div className="border-t border-gray-100 dark:border-gray-700">
-                      <table className="w-full text-sm">
-                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                          {corte.corte_account_totals
-                            .sort((a, b) => b.total_amount - a.total_amount)
-                            .map(t => {
-                              const group = CORTE_ACCOUNT_GROUPS.find(g => g.accountKey === t.account_key)
-                              return (
-                                <tr key={t.id} className="bg-white dark:bg-gray-800">
-                                  <td className="px-4 py-2 text-gray-600 dark:text-gray-400">
-                                    {group?.label ?? t.account_key}
-                                  </td>
-                                  <td className="px-4 py-2 text-right font-medium text-gray-900 dark:text-gray-100">
-                                    S/ {fmt(t.total_amount)}
-                                  </td>
-                                </tr>
-                              )
-                            })}
-                        </tbody>
-                        <tfoot>
-                          <tr className="bg-gray-50 dark:bg-gray-700/50 font-semibold">
-                            <td className="px-4 py-2 text-gray-700 dark:text-gray-300">Total</td>
-                            <td className="px-4 py-2 text-right text-indigo-700 dark:text-indigo-400">
-                              S/ {fmt(corteTotal)}
-                            </td>
-                          </tr>
-                        </tfoot>
-                      </table>
+                      {loadingCorteExpenses && !corteExpensesCache[corte.id] ? (
+                        <p className="px-4 py-3 text-xs text-gray-400 dark:text-gray-500">Cargando detalle...</p>
+                      ) : (
+                        <table className="w-full text-sm">
+                          <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                            {corte.corte_account_totals
+                              .sort((a, b) => b.total_amount - a.total_amount)
+                              .map(t => {
+                                const group = CORTE_ACCOUNT_GROUPS.find(g => g.accountKey === t.account_key)
+                                const isAccountExpanded = expandedCorteAccount === `${corte.id}:${t.account_key}`
+                                const groupExpenses = group
+                                  ? corteExpenses.filter(e => getExpenseAmountForGroup(e, group.expenseColumns) > 0)
+                                  : []
+                                return (
+                                  <Fragment key={t.id}>
+                                    <tr
+                                      className={`cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 transition ${isAccountExpanded ? 'bg-indigo-50 dark:bg-indigo-900/20' : 'bg-white dark:bg-gray-800'}`}
+                                      onClick={() => setExpandedCorteAccount(isAccountExpanded ? null : `${corte.id}:${t.account_key}`)}
+                                    >
+                                      <td className="px-4 py-2 text-gray-600 dark:text-gray-400">
+                                        {group?.label ?? t.account_key}
+                                        {groupExpenses.length > 0 && (
+                                          <span className="ml-1.5 text-xs text-gray-400 dark:text-gray-500">
+                                            ({groupExpenses.length}) {isAccountExpanded ? '▲' : '▼'}
+                                          </span>
+                                        )}
+                                      </td>
+                                      <td className="px-4 py-2 text-right font-medium text-gray-900 dark:text-gray-100">
+                                        S/ {fmt(t.total_amount)}
+                                      </td>
+                                    </tr>
+                                    {isAccountExpanded && groupExpenses.map(e => (
+                                      <tr key={e.id} className="bg-gray-50 dark:bg-gray-700/20">
+                                        <td className="pl-8 pr-4 py-1.5 text-xs text-gray-500 dark:text-gray-400">
+                                          <span className="text-gray-400 dark:text-gray-500 mr-2">{formatDate(e.date)}</span>
+                                          {e.description}
+                                        </td>
+                                        <td className="px-4 py-1.5 text-right text-xs text-gray-600 dark:text-gray-400">
+                                          S/ {fmt(group ? getExpenseAmountForGroup(e, group.expenseColumns) : 0)}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </Fragment>
+                                )
+                              })}
+                          </tbody>
+                          <tfoot>
+                            <tr className="bg-gray-50 dark:bg-gray-700/50 font-semibold">
+                              <td className="px-4 py-2 text-gray-700 dark:text-gray-300">Total</td>
+                              <td className="px-4 py-2 text-right text-indigo-700 dark:text-indigo-400">
+                                S/ {fmt(corteTotal)}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      )}
                     </div>
                   )}
                 </div>
