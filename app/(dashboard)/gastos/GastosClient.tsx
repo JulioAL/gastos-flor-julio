@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { EXPENSE_COLUMNS, ACCOUNTS, MONTH_NAMES, POWER_COLS, EXPENSE_CATEGORIES, detectExpenseTag, getCategoryMeta } from '@/lib/utils/accounts'
 import type { PersonalExpense } from '@/lib/supabase/types'
@@ -168,13 +168,6 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
     setShowForm(true)
   }
 
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape' && showForm) setShowForm(false)
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [showForm])
 
   const splitSum = form.splits.reduce((s, sp) => s + (parseFloat(sp.monto) || 0), 0)
   const totalNum = parseFloat(form.totalMonto) || 0
@@ -309,18 +302,18 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
   }
 
   return (
-    <div className="space-y-4 pb-20 sm:pb-0">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Mis Gastos</h1>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">Mis Gastos</h1>
         <div className="flex gap-2">
           <button
             onClick={() => { setSelectMode(m => !m); setSelectedIds(new Set()) }}
-            className={`text-sm px-4 py-2 rounded-lg border transition ${selectMode ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-400 text-indigo-700 dark:text-indigo-400' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+            className={`text-sm px-4 py-2 rounded-lg border transition ${selectMode ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-400 text-emerald-700 dark:text-emerald-400' : 'border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
           >
             {selectMode ? 'Cancelar' : 'Seleccionar'}
           </button>
           {!selectMode && (
-            <button onClick={openNew} className="bg-indigo-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
+            <button onClick={openNew} className="bg-emerald-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-emerald-700 transition">
               + Agregar
             </button>
           )}
@@ -329,11 +322,11 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2">
-        <select className="border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm" value={filterMonth} onChange={e => setFilterMonth(Number(e.target.value))}>
+        <select className="border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-sm" value={filterMonth} onChange={e => setFilterMonth(Number(e.target.value))}>
           <option value={0}>Todos los meses</option>
           {months.map(m => <option key={m} value={m}>{MONTH_NAMES[m]}</option>)}
         </select>
-        <select className="border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm" value={filterType} onChange={e => setFilterType(e.target.value)}>
+        <select className="border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-sm" value={filterType} onChange={e => setFilterType(e.target.value)}>
           <option value="all">Todos</option>
           <option value="personal">Personal</option>
           <option value="flor_me_debe">{deudaLabel}</option>
@@ -342,11 +335,11 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
           <option value="sin_clasificar">Sin clasificar</option>
           <option value="pendiente">Sin corte</option>
         </select>
-        <select className="border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm" value={filterAccount} onChange={e => setFilterAccount(e.target.value)}>
+        <select className="border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-sm" value={filterAccount} onChange={e => setFilterAccount(e.target.value)}>
           <option value="all">Todas las cuentas</option>
           {ACCOUNTS.map(a => <option key={a.key} value={a.key}>{a.label}</option>)}
         </select>
-        <select className="border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm" value={filterRegDate} onChange={e => setFilterRegDate(e.target.value)}>
+        <select className="border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-sm" value={filterRegDate} onChange={e => setFilterRegDate(e.target.value)}>
           <option value="">Fecha de registro</option>
           {regDates.map(d => (
             <option key={d} value={d}>
@@ -354,13 +347,13 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
             </option>
           ))}
         </select>
-        <select className="border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm" value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
+        <select className="border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-sm" value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
           <option value="all">Todas las categorías</option>
           {EXPENSE_CATEGORIES.map(cat => (
             <option key={cat.key} value={cat.key}>{cat.label}</option>
           ))}
         </select>
-        <select className="border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm" value={filterAccountType} onChange={e => setFilterAccountType(e.target.value)}>
+        <select className="border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-sm" value={filterAccountType} onChange={e => setFilterAccountType(e.target.value)}>
           <option value="all">Crédito y débito</option>
           <option value="credito">Crédito</option>
           <option value="debito">Débito</option>
@@ -368,7 +361,7 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
         <input
           type="text"
           placeholder="Buscar..."
-          className="border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm flex-1 min-w-28"
+          className="border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-sm flex-1 min-w-28"
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
@@ -405,31 +398,31 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
       )}
 
       {/* Subtotal / select-all bar */}
-      <div className="bg-indigo-50 dark:bg-indigo-900/30 rounded-xl px-4 py-3 flex justify-between items-center gap-3">
+      <div className="bg-emerald-50 dark:bg-emerald-900/30 rounded-xl px-4 py-3 flex justify-between items-center gap-3">
         {selectMode ? (
           <button onClick={toggleSelectAll} className="flex items-center gap-2.5">
-            <span className={`w-6 h-6 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition ${selectedIds.size === filtered.length && filtered.length > 0 ? 'bg-indigo-600 border-indigo-600' : 'border-indigo-400 bg-white dark:bg-gray-700'}`}>
+            <span className={`w-6 h-6 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition ${selectedIds.size === filtered.length && filtered.length > 0 ? 'bg-emerald-600 border-emerald-600' : 'border-emerald-400 bg-white dark:bg-slate-700'}`}>
               {selectedIds.size === filtered.length && filtered.length > 0 && (
                 <svg className="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
               )}
               {selectedIds.size > 0 && selectedIds.size < filtered.length && (
-                <span className="w-2.5 h-0.5 bg-indigo-500 rounded"/>
+                <span className="w-2.5 h-0.5 bg-emerald-500 rounded"/>
               )}
             </span>
-            <span className="text-sm text-indigo-700 dark:text-indigo-400 font-medium">
+            <span className="text-sm text-emerald-700 dark:text-emerald-400 font-medium">
               {selectedIds.size > 0 ? `${selectedIds.size} seleccionados` : `Seleccionar todos (${filtered.length})`}
             </span>
           </button>
         ) : (
-          <span className="text-sm text-indigo-700 dark:text-indigo-400 font-medium">{filtered.length} gastos</span>
+          <span className="text-sm text-emerald-700 dark:text-emerald-400 font-medium">{filtered.length} gastos</span>
         )}
-        <span className="font-bold text-indigo-800 dark:text-indigo-400">S/ {subtotal.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
+        <span className="font-bold text-emerald-800 dark:text-emerald-400">S/ {subtotal.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
       </div>
 
       {/* Expense list */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
         {filtered.length === 0 ? (
-          <p className="p-6 text-center text-gray-400 dark:text-gray-500 text-sm">Sin gastos para este filtro</p>
+          <p className="p-6 text-center text-slate-400 dark:text-slate-500 text-sm">Sin gastos para este filtro</p>
         ) : filtered.map(e => {
           const isSelected = selectedIds.has(e.id)
           const splits = detectSplits(e)
@@ -437,23 +430,23 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
           return (
           <div
             key={e.id}
-            className={`px-4 py-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition ${isSelected ? 'bg-indigo-50 dark:bg-indigo-900/20' : ''}`}
+            className={`px-4 py-3 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer transition ${isSelected ? 'bg-emerald-50 dark:bg-emerald-900/20' : ''}`}
             onClick={() => selectMode ? toggleSelect(e.id) : openEdit(e)}
           >
             {selectMode && (
-              <span className={`w-6 h-6 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition ${isSelected ? 'bg-indigo-600 border-indigo-600' : 'border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-700'}`}>
+              <span className={`w-6 h-6 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition ${isSelected ? 'bg-emerald-600 border-emerald-600' : 'border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700'}`}>
                 {isSelected && <svg className="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
               </span>
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{e.description}</p>
+              <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{e.description}</p>
               <div className="flex gap-1.5 mt-0.5 flex-wrap items-center">
-                <span className="text-xs text-gray-400 dark:text-gray-500">{new Date(e.date + 'T00:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}</span>
+                <span className="text-xs text-slate-400 dark:text-slate-500">{new Date(e.date + 'T00:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}</span>
                 <span className={`text-xs px-1.5 py-0.5 rounded-full border font-medium ${(e.account_type ?? 'credito') === 'credito' ? 'bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 border-violet-200 dark:border-violet-700' : 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-700'}`}>
                   {(e.account_type ?? 'credito') === 'credito' ? 'Crédito' : 'Débito'}
                 </span>
                 {e.created_at && (
-                  <span className="text-xs text-gray-400 dark:text-gray-500">· reg. {new Date(e.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}</span>
+                  <span className="text-xs text-slate-400 dark:text-slate-500">· reg. {new Date(e.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}</span>
                 )}
                 {(e.category || e.subcategory) && (() => {
                   const catMeta = getCategoryMeta(e.category ?? '')
@@ -495,10 +488,10 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
                     const powerSub = isPower && sp.power_subcuenta ? POWER_COLS.find(c => c.key === sp.power_subcuenta) : null
                     const powerSinSub = isPower && !sp.power_subcuenta
                     return (
-                      <span key={sp.id} className={`text-xs px-1.5 py-0.5 rounded-full inline-flex items-center gap-1 ${powerSinSub ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}>
+                      <span key={sp.id} className={`text-xs px-1.5 py-0.5 rounded-full inline-flex items-center gap-1 ${powerSinSub ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
                         {cuentaLabel}
                         {powerSinSub && ' · sin columna'}
-                        {powerSub && <span className="bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 px-1 rounded-full"> — {powerSub.label}</span>}
+                        {powerSub && <span className="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-300 px-1 rounded-full"> — {powerSub.label}</span>}
                         {amtLabel}
                       </span>
                     )
@@ -508,7 +501,7 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-gray-800 dark:text-gray-200 text-sm whitespace-nowrap">
+              <span className="font-bold text-slate-800 dark:text-slate-200 text-sm whitespace-nowrap">
                 S/ {expenseTotal(e).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
               </span>
               {!selectMode && (
@@ -522,7 +515,7 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
 
       {/* Bulk delete floating bar */}
       {selectMode && selectedIds.size > 0 && (
-        <div className="fixed bottom-20 sm:bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 px-5 py-3 rounded-2xl shadow-2xl">
+        <div className="fixed bottom-20 sm:bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-5 py-3 rounded-2xl shadow-2xl">
           <span className="text-sm font-medium">{selectedIds.size} seleccionados</span>
           <button
             onClick={bulkDelete}
@@ -534,301 +527,320 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
             </svg>
             {bulkDeleting ? 'Eliminando...' : 'Eliminar'}
           </button>
-          <button onClick={exitSelectMode} className="text-sm text-gray-300 dark:text-gray-600 hover:text-white dark:hover:text-gray-900 transition">Cancelar</button>
+          <button onClick={exitSelectMode} className="text-sm text-slate-300 dark:text-slate-600 hover:text-white dark:hover:text-slate-900 transition">Cancelar</button>
         </div>
       )}
 
       {/* Form modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-4" onClick={() => setShowForm(false)}>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-              <h2 className="font-semibold text-gray-800 dark:text-gray-200">{editExpense ? 'Editar gasto' : 'Nuevo gasto'}</h2>
-              <button onClick={() => setShowForm(false)} className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">✕</button>
+        <ModalForm
+          editExpense={editExpense}
+          form={form}
+          setForm={setForm}
+          saving={saving}
+          canSave={canSave}
+          totalNum={totalNum}
+          splitSum={splitSum}
+          deudaLabel={deudaLabel}
+          onClose={() => setShowForm(false)}
+          onSave={save}
+        />
+      )}
+    </div>
+  )
+}
+
+// ─── Modal separado para mantener el componente principal limpio ───────────────
+
+interface ModalFormProps {
+  editExpense: PersonalExpense | null
+  form: typeof EMPTY_FORM & { splits: Split[] }
+  setForm: React.Dispatch<React.SetStateAction<typeof EMPTY_FORM & { splits: Split[] }>>
+  saving: boolean
+  canSave: boolean
+  totalNum: number
+  splitSum: number
+  deudaLabel: string
+  onClose: () => void
+  onSave: (andAnother?: boolean) => void
+}
+
+const CLAS_OPTIONS = [
+  { value: 'personal',      label: 'Personal',    active: 'bg-purple-600 text-white', inactive: 'border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20' },
+  { value: 'flor_me_debe',  label: null,           active: 'bg-pink-500 text-white',   inactive: 'border-pink-200 dark:border-pink-800 text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-900/20' },
+  { value: 'hogar',         label: 'Hogar',        active: 'bg-blue-600 text-white',   inactive: 'border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20' },
+] as const
+
+function ModalForm({ editExpense, form, setForm, saving, canSave, totalNum, splitSum, deudaLabel, onClose, onSave }: ModalFormProps) {
+  const descRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const t = setTimeout(() => descRef.current?.focus(), 80)
+    return () => clearTimeout(t)
+  }, [])
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
+  const clasOptions = CLAS_OPTIONS.map(o => ({ ...o, label: o.value === 'flor_me_debe' ? deudaLabel : o.label! }))
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
+          <h2 className="font-semibold text-slate-800 dark:text-slate-200">{editExpense ? 'Editar gasto' : 'Nuevo gasto'}</h2>
+          <button onClick={onClose} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300">✕</button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* Fecha + tipo de cuenta */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">Fecha</label>
+              <input type="date" className="mt-1 w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
             </div>
-            <div className="p-5 space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Fecha</label>
-                  <input type="date" className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
-                </div>
-                {editExpense && (
-                  <div>
-                    <label className="text-xs text-orange-500 dark:text-orange-400 font-medium">Fecha registro [TEST]</label>
-                    <input type="date" className="mt-1 w-full border border-orange-300 dark:border-orange-600 rounded-lg px-3 py-2 text-sm" value={form.created_at_date} onChange={e => setForm(f => ({ ...f, created_at_date: e.target.value }))} />
-                  </div>
-                )}
-              </div>
+            {editExpense && (
               <div>
-                <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Tipo de cuenta</label>
-                <div className="mt-1.5 flex gap-4">
-                  {(['credito', 'debito'] as const).map(type => (
-                    <label key={type} className="flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={form.accountType === type}
-                        onChange={() => setForm(f => ({ ...f, accountType: type }))}
-                        className="w-4 h-4 rounded accent-indigo-600"
-                      />
-                      <span className="text-sm text-gray-700 dark:text-gray-300 capitalize">
-                        Cuenta {type === 'credito' ? 'crédito' : 'débito'}
-                      </span>
-                    </label>
-                  ))}
-                </div>
+                <label className="text-xs text-orange-500 dark:text-orange-400 font-medium">Fecha registro [TEST]</label>
+                <input type="date" className="mt-1 w-full border border-orange-300 dark:border-orange-600 rounded-lg px-3 py-2 text-sm" value={form.created_at_date} onChange={e => setForm(f => ({ ...f, created_at_date: e.target.value }))} />
               </div>
+            )}
+          </div>
 
-              <div>
-                <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Descripción</label>
-                <input
-                  type="text"
-                  className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
-                  placeholder="Ej: Supermercado"
-                  value={form.description}
-                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                  onBlur={e => {
-                    if (!form.category && e.target.value.trim()) {
-                      const detected = detectExpenseTag(e.target.value)
-                      if (detected) setForm(f => ({ ...f, ...detected }))
-                    }
-                  }}
-                />
-              </div>
-
-              {/* Category / Tag */}
-              <div>
-                <div className="flex items-center justify-between">
-                  <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Categoría</label>
-                  {(form.category || form.subcategory) && (
-                    <button
-                      type="button"
-                      onClick={() => setForm(f => ({ ...f, category: '', subcategory: '' }))}
-                      className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                    >
-                      Limpiar
-                    </button>
-                  )}
-                </div>
-                <div className="mt-1 flex gap-2">
-                  <select
-                    className="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800"
-                    value={form.category}
-                    onChange={e => setForm(f => ({ ...f, category: e.target.value, subcategory: '' }))}
-                  >
-                    <option value="">Sin categoría</option>
-                    {EXPENSE_CATEGORIES.map(cat => (
-                      <option key={cat.key} value={cat.key}>{cat.label}</option>
-                    ))}
-                  </select>
-                  {form.category && (
-                    <select
-                      className="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800"
-                      value={form.subcategory}
-                      onChange={e => setForm(f => ({ ...f, subcategory: e.target.value }))}
-                    >
-                      <option value="">Subcategoría...</option>
-                      {(getCategoryMeta(form.category)?.subcategories ?? []).map(sub => (
-                        <option key={sub.key} value={sub.key}>{sub.label}</option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-              </div>
-
-              {/* Total amount */}
-              <div>
-                <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Monto total (S/)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
-                  value={form.totalMonto}
-                  onChange={e => setForm(f => ({ ...f, totalMonto: e.target.value }))}
-                />
-              </div>
-
-              {/* Splits */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                    División del gasto
-                  </label>
-                  {form.splits.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const total = parseFloat(form.totalMonto) || 0
-                        if (total === 0) return
-                        const n = form.splits.length
-                        const each = Math.floor((total / n) * 100) / 100
-                        const last = Math.round((total - each * (n - 1)) * 100) / 100
-                        setForm(f => ({
-                          ...f,
-                          splits: f.splits.map((sp, i) => ({ ...sp, monto: (i < n - 1 ? each : last).toString() }))
-                        }))
-                      }}
-                      className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
-                    >
-                      Dividir equitativamente
-                    </button>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  {form.splits.map((split, idx) => {
-                    const total = parseFloat(form.totalMonto) || 0
-                    const splitNum = parseFloat(split.monto) || 0
-                    const pct = total > 0 ? ((splitNum / total) * 100).toFixed(1) : ''
-                    return (
-                      <div key={split.id} className="border border-gray-200 dark:border-gray-600 rounded-xl p-3 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
-                            {form.splits.length > 1 ? `Parte ${idx + 1}` : 'Clasificación'}
-                          </span>
-                          {form.splits.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => setForm(f => ({ ...f, splits: f.splits.filter((_, i) => i !== idx) }))}
-                              className="text-red-400 hover:text-red-600 text-xs leading-none"
-                            >✕</button>
-                          )}
-                        </div>
-
-                        <select
-                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800"
-                          value={split.clasificacion}
-                          onChange={e => setForm(f => ({
-                            ...f,
-                            splits: f.splits.map((sp, i) => i === idx
-                              ? {
-                                  ...sp,
-                                  clasificacion: e.target.value as Clasificacion,
-                                  hogar_cuenta: '',
-                                  power_subcuenta: '',
-                                  monto: idx === 0 && f.splits.length === 1 ? f.totalMonto : sp.monto,
-                                }
-                              : sp)
-                          }))}
-                        >
-                          <option value="">Seleccionar...</option>
-                          <option value="personal">Gasto personal</option>
-                          <option value="flor_me_debe">Gasto — {deudaLabel}</option>
-                          <option value="hogar">Gasto hogar</option>
-                        </select>
-
-                        {split.clasificacion === 'hogar' && (
-                          <select
-                            className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800"
-                            value={split.hogar_cuenta}
-                            onChange={e => setForm(f => ({
-                              ...f,
-                              splits: f.splits.map((sp, i) => i === idx
-                                ? { ...sp, hogar_cuenta: e.target.value, power_subcuenta: '' }
-                                : sp)
-                            }))}
-                          >
-                            <option value="">Sin cuenta asignada</option>
-                            {HOGAR_CUENTAS.map(c => (
-                              <option key={c.key} value={c.key}>{c.label}</option>
-                            ))}
-                          </select>
-                        )}
-
-                        {(split.hogar_cuenta === 'power' || split.hogar_cuenta === 'otros_power') && (
-                          <select
-                            className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800"
-                            value={split.power_subcuenta}
-                            onChange={e => setForm(f => ({
-                              ...f,
-                              splits: f.splits.map((sp, i) => i === idx
-                                ? { ...sp, power_subcuenta: e.target.value }
-                                : sp)
-                            }))}
-                          >
-                            <option value="">Sin especificar</option>
-                            {POWER_COLS.map(c => (
-                              <option key={c.key} value={c.key}>{c.label}</option>
-                            ))}
-                          </select>
-                        )}
-
-                        {/* Amount + percentage */}
-                        <div className="flex gap-2">
-                          <div className="flex-1 relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 pointer-events-none">S/</span>
-                            <input
-                              type="number"
-                              step="0.01"
-                              placeholder="0.00"
-                              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg pl-8 pr-3 py-2 text-sm"
-                              value={split.monto}
-                              onChange={e => setForm(f => ({
-                                ...f,
-                                splits: f.splits.map((sp, i) => i === idx ? { ...sp, monto: e.target.value } : sp)
-                              }))}
-                            />
-                          </div>
-                          <div className="w-20 relative">
-                            <input
-                              type="number"
-                              step="0.1"
-                              min="0"
-                              max="100"
-                              placeholder="0"
-                              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg pl-3 pr-6 py-2 text-sm"
-                              value={pct}
-                              onChange={e => {
-                                const pctVal = parseFloat(e.target.value) || 0
-                                const t = parseFloat(form.totalMonto) || 0
-                                setForm(f => ({
-                                  ...f,
-                                  splits: f.splits.map((sp, i) => i === idx
-                                    ? { ...sp, monto: t > 0 ? (pctVal * t / 100).toFixed(2) : '' }
-                                    : sp)
-                                }))
-                              }}
-                            />
-                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">%</span>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-
-                {/* Remaining indicator */}
-                {totalNum > 0 && (
-                  <p className={`mt-1.5 text-xs font-medium ${Math.abs(totalNum - splitSum) < 0.01 ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                    {Math.abs(totalNum - splitSum) < 0.01
-                      ? '✓ Suma correcta'
-                      : `Restante: S/ ${(totalNum - splitSum).toFixed(2)}`}
-                  </p>
-                )}
-
+          {/* Toggle crédito / débito */}
+          <div>
+            <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">Tipo de cuenta</label>
+            <div className="mt-1.5 inline-flex rounded-lg border border-slate-200 dark:border-slate-600 overflow-hidden">
+              {(['credito', 'debito'] as const).map(type => (
                 <button
+                  key={type}
                   type="button"
-                  onClick={() => setForm(f => ({ ...f, splits: [...f.splits, makeSplit()] }))}
-                  className="mt-2 w-full border border-dashed border-gray-300 dark:border-gray-600 rounded-xl py-2 text-sm text-gray-500 dark:text-gray-400 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition"
+                  onClick={() => setForm(f => ({ ...f, accountType: type }))}
+                  className={`px-4 py-1.5 text-sm font-medium transition ${form.accountType === type ? 'bg-emerald-600 text-white' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
                 >
-                  + Agregar parte
+                  {type === 'credito' ? 'Crédito' : 'Débito'}
                 </button>
-              </div>
-            </div>
-            <div className="px-5 py-4 border-t border-gray-100 dark:border-gray-700 flex gap-2 justify-end flex-wrap">
-              <button onClick={() => setShowForm(false)} className="text-sm text-gray-500 dark:text-gray-400 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">Cancelar</button>
-              {!editExpense && (
-                <button onClick={() => save(true)} disabled={saving || !canSave} className="border border-indigo-600 dark:border-indigo-500 text-indigo-600 dark:text-indigo-400 text-sm px-4 py-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 disabled:opacity-50 transition">
-                  {saving ? '...' : 'Guardar y agregar otra'}
-                </button>
-              )}
-              <button onClick={() => save(false)} disabled={saving || !canSave} className="bg-indigo-600 text-white text-sm px-5 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition">
-                {saving ? 'Guardando...' : 'Guardar'}
-              </button>
+              ))}
             </div>
           </div>
+
+          {/* Descripción */}
+          <div>
+            <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">Descripción</label>
+            <input
+              ref={descRef}
+              type="text"
+              className="mt-1 w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm"
+              placeholder="Ej: Supermercado"
+              value={form.description}
+              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+              onBlur={e => {
+                if (!form.category && e.target.value.trim()) {
+                  const detected = detectExpenseTag(e.target.value)
+                  if (detected) setForm(f => ({ ...f, ...detected }))
+                }
+              }}
+            />
+          </div>
+
+          {/* Categoría */}
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">Categoría</label>
+              {(form.category || form.subcategory) && (
+                <button type="button" onClick={() => setForm(f => ({ ...f, category: '', subcategory: '' }))} className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                  Limpiar
+                </button>
+              )}
+            </div>
+            <div className="mt-1 flex gap-2">
+              <select className="flex-1 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value, subcategory: '' }))}>
+                <option value="">Sin categoría</option>
+                {EXPENSE_CATEGORIES.map(cat => <option key={cat.key} value={cat.key}>{cat.label}</option>)}
+              </select>
+              {form.category && (
+                <select className="flex-1 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800" value={form.subcategory} onChange={e => setForm(f => ({ ...f, subcategory: e.target.value }))}>
+                  <option value="">Subcategoría...</option>
+                  {(getCategoryMeta(form.category)?.subcategories ?? []).map(sub => <option key={sub.key} value={sub.key}>{sub.label}</option>)}
+                </select>
+              )}
+            </div>
+          </div>
+
+          {/* Monto total */}
+          <div>
+            <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">Monto total (S/)</label>
+            <div className="mt-1 relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 pointer-events-none">S/</span>
+              <input
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                className="w-full border border-slate-300 dark:border-slate-600 rounded-lg pl-8 pr-3 py-2 text-sm"
+                value={form.totalMonto}
+                onChange={e => {
+                  const val = e.target.value
+                  setForm(f => ({
+                    ...f,
+                    totalMonto: val,
+                    splits: f.splits.length === 1 ? [{ ...f.splits[0], monto: val }] : f.splits,
+                  }))
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Splits */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">División del gasto</label>
+              {form.splits.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const total = parseFloat(form.totalMonto) || 0
+                    if (total === 0) return
+                    const n = form.splits.length
+                    const each = Math.floor((total / n) * 100) / 100
+                    const last = Math.round((total - each * (n - 1)) * 100) / 100
+                    setForm(f => ({ ...f, splits: f.splits.map((sp, i) => ({ ...sp, monto: (i < n - 1 ? each : last).toString() })) }))
+                  }}
+                  className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline"
+                >
+                  Dividir equitativamente
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              {form.splits.map((split, idx) => {
+                const total = parseFloat(form.totalMonto) || 0
+                const splitNum = parseFloat(split.monto) || 0
+                const pct = total > 0 ? ((splitNum / total) * 100).toFixed(1) : ''
+                const isMultiSplit = form.splits.length > 1
+                return (
+                  <div key={split.id} className="border border-slate-200 dark:border-slate-600 rounded-xl p-3 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-slate-400 dark:text-slate-500">
+                        {isMultiSplit ? `Parte ${idx + 1}` : 'Clasificación'}
+                      </span>
+                      {isMultiSplit && (
+                        <button type="button" onClick={() => setForm(f => ({ ...f, splits: f.splits.filter((_, i) => i !== idx) }))} className="text-red-400 hover:text-red-600 text-xs leading-none">✕</button>
+                      )}
+                    </div>
+
+                    {/* Clasificación como pills */}
+                    <div className="flex gap-1.5 flex-wrap">
+                      {clasOptions.map(opt => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setForm(f => ({
+                            ...f,
+                            splits: f.splits.map((sp, i) => i === idx
+                              ? { ...sp, clasificacion: opt.value as Clasificacion, hogar_cuenta: '', power_subcuenta: '', monto: idx === 0 && !isMultiSplit ? f.totalMonto : sp.monto }
+                              : sp)
+                          }))}
+                          className={`px-3 py-1 rounded-full text-xs font-medium border transition ${split.clasificacion === opt.value ? opt.active : `bg-transparent border ${opt.inactive}`}`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {split.clasificacion === 'hogar' && (
+                      <select
+                        className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800"
+                        value={split.hogar_cuenta}
+                        onChange={e => setForm(f => ({ ...f, splits: f.splits.map((sp, i) => i === idx ? { ...sp, hogar_cuenta: e.target.value, power_subcuenta: '' } : sp) }))}
+                      >
+                        <option value="">Sin cuenta asignada</option>
+                        {HOGAR_CUENTAS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+                      </select>
+                    )}
+
+                    {(split.hogar_cuenta === 'power' || split.hogar_cuenta === 'otros_power') && (
+                      <select
+                        className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800"
+                        value={split.power_subcuenta}
+                        onChange={e => setForm(f => ({ ...f, splits: f.splits.map((sp, i) => i === idx ? { ...sp, power_subcuenta: e.target.value } : sp) }))}
+                      >
+                        <option value="">Sin especificar</option>
+                        {POWER_COLS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+                      </select>
+                    )}
+
+                    {/* Monto (+ % solo si hay múltiples splits) */}
+                    <div className="flex gap-2">
+                      <div className="flex-1 relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 pointer-events-none">S/</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          className="w-full border border-slate-300 dark:border-slate-600 rounded-lg pl-8 pr-3 py-2 text-sm"
+                          value={split.monto}
+                          onChange={e => setForm(f => ({ ...f, splits: f.splits.map((sp, i) => i === idx ? { ...sp, monto: e.target.value } : sp) }))}
+                        />
+                      </div>
+                      {isMultiSplit && (
+                        <div className="w-20 relative">
+                          <input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            max="100"
+                            placeholder="0"
+                            className="w-full border border-slate-300 dark:border-slate-600 rounded-lg pl-3 pr-6 py-2 text-sm"
+                            value={pct}
+                            onChange={e => {
+                              const pctVal = parseFloat(e.target.value) || 0
+                              const t = parseFloat(form.totalMonto) || 0
+                              setForm(f => ({ ...f, splits: f.splits.map((sp, i) => i === idx ? { ...sp, monto: t > 0 ? (pctVal * t / 100).toFixed(2) : '' } : sp) }))
+                            }}
+                          />
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">%</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {totalNum > 0 && form.splits.length > 1 && (
+              <p className={`mt-1.5 text-xs font-medium ${Math.abs(totalNum - splitSum) < 0.01 ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                {Math.abs(totalNum - splitSum) < 0.01 ? '✓ Suma correcta' : `Restante: S/ ${(totalNum - splitSum).toFixed(2)}`}
+              </p>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setForm(f => ({ ...f, splits: [...f.splits, makeSplit()] }))}
+              className="mt-2 w-full border border-dashed border-slate-300 dark:border-slate-600 rounded-xl py-2 text-sm text-slate-500 dark:text-slate-400 hover:border-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition"
+            >
+              + Agregar parte
+            </button>
+          </div>
         </div>
-      )}
+
+        <div className="px-5 py-4 border-t border-slate-100 dark:border-slate-700 flex gap-2 justify-end flex-wrap">
+          <button onClick={onClose} className="text-sm text-slate-500 dark:text-slate-400 px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Cancelar</button>
+          {!editExpense && (
+            <button onClick={() => onSave(true)} disabled={saving || !canSave} className="border border-emerald-600 dark:border-emerald-500 text-emerald-600 dark:text-emerald-400 text-sm px-4 py-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/30 disabled:opacity-50 transition">
+              {saving ? '...' : 'Guardar y agregar otra'}
+            </button>
+          )}
+          <button onClick={() => onSave(false)} disabled={saving || !canSave} className="bg-emerald-600 text-white text-sm px-5 py-2 rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition">
+            {saving ? 'Guardando...' : 'Guardar'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

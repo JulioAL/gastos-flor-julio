@@ -169,6 +169,11 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
   const distRowsRef = useRef(distRows)
   useEffect(() => { distRowsRef.current = distRows }, [distRows])
 
+  useEffect(() => {
+    const containers = document.querySelectorAll<HTMLElement>('.table-scroll')
+    containers.forEach(el => { el.scrollLeft = el.scrollWidth })
+  }, [selectedMonthId])
+
   // Load and seed dist rows for the selected month.
   // Fetches deuda labels in the same call to avoid race conditions.
   // Uses soft-delete (hidden=true) so deleted rows are never re-seeded.
@@ -803,11 +808,11 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
   }
 
   return (
-    <div className="space-y-6 pb-20 sm:pb-0">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Cuentas del Presupuesto</h1>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">Cuentas del Presupuesto</h1>
         <select
-          className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm"
+          className="border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm"
           value={selectedMonthId}
           onChange={async e => {
             const val = e.target.value
@@ -837,10 +842,10 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
         </select>
       </div>
 
-      {loading ? <p className="text-gray-400 dark:text-gray-500 text-sm">Cargando...</p> : (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
-            <h2 className="font-semibold text-gray-800 dark:text-gray-200 text-sm">Resumen por cuenta Scotiabank</h2>
+      {loading ? <p className="text-slate-400 dark:text-slate-500 text-sm">Cargando...</p> : (
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+            <h2 className="font-semibold text-slate-800 dark:text-slate-200 text-sm">Resumen por cuenta Scotiabank</h2>
             <div className="flex items-center gap-2">
               {copyResult === 'success' && (
                 <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">✓ Copiado</span>
@@ -852,7 +857,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                 <button
                   onClick={copyFromPreviousMonth}
                   disabled={copying || !getDisplayMonths(months, selectedMonthId)[1]}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-sky-100 hover:bg-sky-200 disabled:bg-gray-100 disabled:cursor-not-allowed text-sky-700 dark:bg-sky-900/40 dark:hover:bg-sky-900/60 dark:disabled:bg-gray-800 dark:text-sky-300 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-sky-100 hover:bg-sky-200 disabled:bg-slate-100 disabled:cursor-not-allowed text-sky-700 dark:bg-sky-900/40 dark:hover:bg-sky-900/60 dark:disabled:bg-slate-800 dark:text-sky-300 transition-colors"
                 >
                   {copying ? (
                     <>
@@ -875,25 +880,25 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
               )}
             </div>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-gray-100 dark:divide-gray-700">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 dark:divide-slate-700">
             {ACCOUNTS.map(acc => {
               const amt = byAccount[acc.key] ?? 0
               const isEditing = editingAccountKey === acc.key
               return (
                 <div key={acc.key} className="p-4">
-                  <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{acc.label}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{acc.label}</p>
                   {acc.key === 'power' ? (
-                    <p className="text-lg font-bold text-gray-800 dark:text-gray-200 mt-1">
+                    <p className="text-lg font-bold text-slate-800 dark:text-slate-200 mt-1">
                       S/ {powerTotal.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                     </p>
                   ) : isEditing ? (
                     <div className="mt-1 flex items-center gap-1">
-                      <span className="text-sm text-gray-400 dark:text-gray-500">S/</span>
+                      <span className="text-sm text-slate-400 dark:text-slate-500">S/</span>
                       <input
                         autoFocus
                         type="number"
                         step="0.01"
-                        className="w-full border border-indigo-400 dark:border-indigo-500 rounded px-2 py-1 text-sm font-bold text-gray-800"
+                        className="w-full border border-emerald-400 dark:border-emerald-500 rounded px-2 py-1 text-sm font-bold text-slate-800"
                         value={editAccountValue}
                         onChange={e => setEditAccountValue(e.target.value)}
                         onBlur={() => saveAccountAmount(acc.key)}
@@ -902,13 +907,13 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                     </div>
                   ) : (
                     <p
-                      className={isSelectedMonthLocked ? 'text-lg font-bold text-gray-400 dark:text-gray-500 mt-1' : 'text-lg font-bold text-gray-800 dark:text-gray-200 mt-1 cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors'}
+                      className={isSelectedMonthLocked ? 'text-lg font-bold text-slate-400 dark:text-slate-500 mt-1' : 'text-lg font-bold text-slate-800 dark:text-slate-200 mt-1 cursor-pointer hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors'}
                       onClick={() => { if (isSelectedMonthLocked) return; setEditingAccountKey(acc.key); setEditAccountValue(amt.toString()) }}
                     >
                       S/ {amt.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                     </p>
                   )}
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{acc.description}</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{acc.description}</p>
                 </div>
               )
             })}
@@ -921,17 +926,18 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
         const displayMonths = getDisplayMonths(months, selectedMonthId)
         if (displayMonths.every(m => m == null)) return null
         return (
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-              <h2 className="font-semibold text-gray-800 dark:text-gray-200 text-sm">Saldo después de Deudas</h2>
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
+              <h2 className="font-semibold text-slate-800 dark:text-slate-200 text-sm">Saldo después de Deudas</h2>
             </div>
-            <table className="w-full text-sm table-fixed">
-              <colgroup><col /><col className="w-36" /><col className="w-36" /><col className="w-36" /><col className="w-8" /></colgroup>
+            <div className="overflow-x-auto table-scroll">
+            <table className="w-full text-sm table-fixed" style={{minWidth:'320px'}}>
+              <colgroup><col className="min-w-[110px]" /><col className="hidden md:table-column w-32" /><col className="w-32" /><col className="w-32" /><col className="w-8" /></colgroup>
               <thead>
-                <tr className="border-b border-gray-100 dark:border-gray-700">
+                <tr className="border-b border-slate-100 dark:border-slate-700">
                   <th />
                   {monthLabels.map((label, i) => (
-                    <th key={i} className="text-right px-4 py-2 font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wide">
+                    <th key={i} className={`text-right px-4 py-2 font-semibold uppercase text-xs tracking-wide${i === 0 ? ' hidden md:table-cell text-slate-600 dark:text-slate-400' : i === 2 ? ' text-emerald-600 dark:text-emerald-400' : ' text-slate-600 dark:text-slate-400'}`}>
                       {label}
                     </th>
                   ))}
@@ -942,7 +948,9 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                 <tr>
                   <td />
                   {displayMonths.map((m, i) => {
-                    if (!m) return <td key={i} className="px-4 py-3 text-right text-gray-400">—</td>
+                    const hiddenCls = i === 0 ? ' hidden md:table-cell' : ''
+                    const currentCls = i === 2 ? ' bg-emerald-50/40 dark:bg-emerald-900/10' : ''
+                    if (!m) return <td key={i} className={`px-4 py-3 text-right text-slate-400${hiddenCls}${currentCls}`}>—</td>
                     const ingresos = (['julio', 'flor'] as const).reduce(
                       (sum, src) => sum + (incomeByMonth[m.id]?.[src]?.amount ?? 0), 0
                     )
@@ -954,7 +962,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                     )
                     const saldo = ingresos - gastos - deudas
                     return (
-                      <td key={i} className={`px-4 py-3 text-right font-semibold ${saldo >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
+                      <td key={i} className={`px-4 py-3 text-right font-semibold${hiddenCls}${currentCls} ${saldo >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
                         {saldo.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                       </td>
                     )
@@ -963,6 +971,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                 </tr>
               </tbody>
             </table>
+            </div>
           </div>
         )
       })()}
@@ -973,36 +982,38 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
         const displayMonths = getDisplayMonths(months, selectedMonthId)
         if (displayMonths.every(m => m == null)) return null
         return (
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-              <h2 className="font-semibold text-gray-800 dark:text-gray-200 text-sm">Ingresos</h2>
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
+              <h2 className="font-semibold text-slate-800 dark:text-slate-200 text-sm">Ingresos</h2>
             </div>
-            <div className="overflow-visible">
-              <table className="w-full text-sm table-fixed">
-                <colgroup><col /><col className="w-36" /><col className="w-36" /><col className="w-36" /><col className="w-8" /></colgroup>
+            <div className="overflow-x-auto table-scroll">
+              <table className="w-full text-sm table-fixed" style={{minWidth:'320px'}}>
+                <colgroup><col className="min-w-[110px]" /><col className="hidden md:table-column w-32" /><col className="w-32" /><col className="w-32" /><col className="w-8" /></colgroup>
                 <thead>
-                  <tr className="border-b border-gray-100 dark:border-gray-700">
-                    <th className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wide">CASH</th>
+                  <tr className="border-b border-slate-100 dark:border-slate-700">
+                    <th className="text-left px-4 py-2 font-semibold text-slate-600 dark:text-slate-400 uppercase text-xs tracking-wide">CASH</th>
                     {monthLabels.map((label, i) => (
-                      <th key={i} className="text-right px-4 py-2 font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wide">
+                      <th key={i} className={`text-right px-4 py-2 font-semibold uppercase text-xs tracking-wide ${i === 2 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>
                         {label}
                       </th>
                     ))}
                     <th />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
+                <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
                   {INCOME_SOURCES.map(({ key, label }) => (
-                    <tr key={key} className="group/row hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                      <td className="px-4 py-2.5 font-medium text-gray-700 dark:text-gray-300">{label}</td>
+                    <tr key={key} className="group/row hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                      <td className="px-4 py-2.5 font-medium text-slate-700 dark:text-slate-300">{label}</td>
                       {displayMonths.map((m, i) => {
-                        if (!m) return <td key={i} className="px-4 py-2.5 text-right text-gray-400 w-36">—</td>
+                        const hiddenCls = i === 0 ? ' hidden md:table-cell' : ''
+                        const currentCls = i === 2 ? ' bg-emerald-50/40 dark:bg-emerald-900/10' : ''
+                        if (!m) return <td key={i} className={`px-4 py-2.5 text-right text-slate-400${hiddenCls}${currentCls}`}>—</td>
                         const entry = incomeByMonth[m.id]?.[key]
                         const isEditing = editingCell?.monthId === m.id && editingCell?.source === key
                         const isEditingCmt = editingComment?.monthId === m.id && editingComment?.source === key
                         const hasComment = key === 'otros_ingresos' && !!entry?.description
                         return (
-                          <td key={i} className="px-4 py-2.5 text-right">
+                          <td key={i} className={`px-4 py-2.5 text-right${hiddenCls}${currentCls}`}>
                             <div className="group/tip flex items-center justify-end gap-1.5 relative w-full">
                               {/* Comment icon / edit button / input — all left of amount */}
                               {key === 'otros_ingresos' && (
@@ -1010,7 +1021,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                                   <input
                                     autoFocus
                                     type="text"
-                                    className="w-40 border border-amber-400 dark:border-amber-500 rounded px-2 py-0.5 text-xs text-gray-800 dark:text-gray-200 dark:bg-gray-700"
+                                    className="w-40 border border-amber-400 dark:border-amber-500 rounded px-2 py-0.5 text-xs text-slate-800 dark:text-slate-200 dark:bg-slate-700"
                                     value={editCommentValue}
                                     placeholder="Agregar comentario..."
                                     onChange={e => setEditCommentValue(e.target.value)}
@@ -1025,14 +1036,14 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                                     <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
                                       <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
                                     </svg>
-                                    <span className="pointer-events-none invisible group-hover/tip:visible opacity-0 group-hover/tip:opacity-100 transition-opacity absolute bottom-full left-0 mb-1.5 z-20 w-52 rounded-lg bg-gray-900 dark:bg-gray-700 px-3 py-2 text-xs text-white text-left leading-snug shadow-lg">
+                                    <span className="pointer-events-none invisible group-hover/tip:visible opacity-0 group-hover/tip:opacity-100 transition-opacity absolute bottom-full left-0 mb-1.5 z-20 w-52 rounded-lg bg-slate-900 dark:bg-slate-700 px-3 py-2 text-xs text-white text-left leading-snug shadow-lg">
                                       {entry!.description}
-                                      <span className="absolute top-full left-2 border-4 border-transparent border-t-gray-900 dark:border-t-gray-700" />
+                                      <span className="absolute top-full left-2 border-4 border-transparent border-t-slate-900 dark:border-t-slate-700" />
                                     </span>
                                   </span>
                                 ) : (
                                   <button
-                                    className="opacity-0 group-hover/row:opacity-100 transition-opacity flex-shrink-0 text-gray-400 hover:text-amber-500 dark:hover:text-amber-400"
+                                    className="opacity-0 group-hover/row:opacity-100 transition-opacity flex-shrink-0 text-slate-400 hover:text-amber-500 dark:hover:text-amber-400"
                                     title="Agregar comentario"
                                     onClick={() => { if (m.locked) return; setEditingComment({ monthId: m.id, source: key }); setEditCommentValue('') }}
                                   >
@@ -1048,7 +1059,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                                   autoFocus
                                   type="number"
                                   step="0.01"
-                                  className="w-full min-w-0 border border-indigo-400 dark:border-indigo-500 rounded px-2 py-0.5 text-sm text-right font-medium text-gray-800 dark:text-gray-200 dark:bg-gray-700"
+                                  className="w-full min-w-0 border border-emerald-400 dark:border-emerald-500 rounded px-2 py-0.5 text-sm text-right font-medium text-slate-800 dark:text-slate-200 dark:bg-slate-700"
                                   value={editCellValue}
                                   onChange={e => setEditCellValue(e.target.value)}
                                   onBlur={() => saveIncomeCell(m.id, key)}
@@ -1059,7 +1070,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                                 />
                               ) : (
                                 <span
-                                  className={m.locked ? 'font-medium text-gray-400 dark:text-gray-500' : 'cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors font-medium text-gray-800 dark:text-gray-200'}
+                                  className={m.locked ? 'font-medium text-slate-400 dark:text-slate-500' : 'cursor-pointer hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-medium text-slate-800 dark:text-slate-200'}
                                   onClick={() => {
                                     if (m.locked) return
                                     setEditingCell({ monthId: m.id, source: key })
@@ -1077,15 +1088,17 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                     </tr>
                   ))}
                   {/* TOTAL INGRESOS row — sum of julio + flor only */}
-                  <tr className="bg-gray-50 dark:bg-gray-700/40 font-semibold">
-                    <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300 uppercase text-xs tracking-wide">TOTAL INGRESOS</td>
+                  <tr className="bg-slate-50 dark:bg-slate-700/40 font-semibold">
+                    <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300 uppercase text-xs tracking-wide">TOTAL INGRESOS</td>
                     {displayMonths.map((m, i) => {
-                      if (!m) return <td key={i} className="px-4 py-2.5 text-right text-gray-400">—</td>
+                      const hiddenCls = i === 0 ? ' hidden md:table-cell' : ''
+                      const currentCls = i === 2 ? ' bg-emerald-50/40 dark:bg-emerald-900/10' : ''
+                      if (!m) return <td key={i} className={`px-4 py-2.5 text-right text-slate-400${hiddenCls}${currentCls}`}>—</td>
                       const total = (['julio', 'flor'] as const).reduce(
                         (sum, src) => sum + (incomeByMonth[m.id]?.[src]?.amount ?? 0), 0
                       )
                       return (
-                        <td key={i} className="px-4 py-2.5 text-right text-gray-800 dark:text-gray-200">
+                        <td key={i} className={`px-4 py-2.5 text-right text-slate-800 dark:text-slate-200${hiddenCls}${currentCls}`}>
                           {total.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                         </td>
                       )
@@ -1104,37 +1117,37 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
         const displayMonths = getDisplayMonths(months, selectedMonthId)
         if (displayMonths.every(m => m == null)) return null
         return (
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-              <h2 className="font-semibold text-gray-800 dark:text-gray-200 text-sm">Gastos presupuestados</h2>
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
+              <h2 className="font-semibold text-slate-800 dark:text-slate-200 text-sm">Gastos presupuestados</h2>
             </div>
-            <div className="overflow-visible">
-              <table className="w-full text-sm table-fixed">
-                <colgroup><col /><col className="w-36" /><col className="w-36" /><col className="w-36" /><col className="w-8" /></colgroup>
+            <div className="overflow-x-auto table-scroll">
+              <table className="w-full text-sm table-fixed" style={{minWidth:'320px'}}>
+                <colgroup><col className="min-w-[110px]" /><col className="hidden md:table-column w-32" /><col className="w-32" /><col className="w-32" /><col className="w-8" /></colgroup>
                 <thead>
-                  <tr className="border-b border-gray-100 dark:border-gray-700">
-                    <th className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wide">GASTO</th>
+                  <tr className="border-b border-slate-100 dark:border-slate-700">
+                    <th className="text-left px-4 py-2 font-semibold text-slate-600 dark:text-slate-400 uppercase text-xs tracking-wide">GASTO</th>
                     {monthLabels.map((label, i) => (
-                      <th key={i} className="text-right px-4 py-2 font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wide">
+                      <th key={i} className={`text-right px-4 py-2 font-semibold uppercase text-xs tracking-wide ${i === 2 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>
                         {label}
                       </th>
                     ))}
                     <th />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
+                <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
                   {gastoRows.map(label => {
                     const isEditingLbl = editingGastoLabel === label
                     const displayLabel = label.startsWith('__new_') ? '' : label
                     return (
-                      <tr key={label} className="group/gasto hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                      <tr key={label} className="group/gasto hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
                         {/* Label cell */}
                         <td className="px-4 py-2">
                           {isEditingLbl ? (
                             <input
                               autoFocus
                               type="text"
-                              className="w-full border border-indigo-400 dark:border-indigo-500 rounded px-2 py-0.5 text-sm text-gray-800 dark:text-gray-200 dark:bg-gray-700"
+                              className="w-full border border-emerald-400 dark:border-emerald-500 rounded px-2 py-0.5 text-sm text-slate-800 dark:text-slate-200 dark:bg-slate-700"
                               value={editGastoLabelValue}
                               placeholder="Nombre del gasto..."
                               onChange={e => setEditGastoLabelValue(e.target.value)}
@@ -1149,26 +1162,28 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                             />
                           ) : (
                             <span
-                              className="cursor-pointer text-gray-700 dark:text-gray-300 font-medium hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                              className="cursor-pointer text-slate-700 dark:text-slate-300 font-medium hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
                               onClick={() => { setEditingGastoLabel(label); setEditGastoLabelValue(displayLabel) }}
                             >
-                              {displayLabel || <em className="text-gray-400 not-italic">Sin nombre</em>}
+                              {displayLabel || <em className="text-slate-400 not-italic">Sin nombre</em>}
                             </span>
                           )}
                         </td>
                         {/* Amount cells */}
                         {displayMonths.map((m, i) => {
-                          if (!m) return <td key={i} className="px-4 py-2 text-right text-gray-400">—</td>
+                          const hiddenCls = i === 0 ? ' hidden md:table-cell' : ''
+                          const currentCls = i === 2 ? ' bg-emerald-50/40 dark:bg-emerald-900/10' : ''
+                          if (!m) return <td key={i} className={`px-4 py-2 text-right text-slate-400${hiddenCls}${currentCls}`}>—</td>
                           const entry = gastosByMonth[m.id]?.[label]
                           const isEditingCell = editingGastoCell?.monthId === m.id && editingGastoCell?.label === label
                           return (
-                            <td key={i} className="px-4 py-2 text-right">
+                            <td key={i} className={`px-4 py-2 text-right${hiddenCls}${currentCls}`}>
                               {isEditingCell ? (
                                 <input
                                   autoFocus
                                   type="number"
                                   step="0.01"
-                                  className="w-full min-w-0 border border-indigo-400 dark:border-indigo-500 rounded px-2 py-0.5 text-sm text-right font-medium text-gray-800 dark:text-gray-200 dark:bg-gray-700"
+                                  className="w-full min-w-0 border border-emerald-400 dark:border-emerald-500 rounded px-2 py-0.5 text-sm text-right font-medium text-slate-800 dark:text-slate-200 dark:bg-slate-700"
                                   value={editGastoCellValue}
                                   onChange={e => setEditGastoCellValue(e.target.value)}
                                   onBlur={() => saveGastoCell(m.id, label)}
@@ -1179,7 +1194,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                                 />
                               ) : (
                                 <span
-                                  className={m.locked ? 'font-medium text-gray-400 dark:text-gray-500' : 'cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors font-medium text-gray-800 dark:text-gray-200'}
+                                  className={m.locked ? 'font-medium text-slate-400 dark:text-slate-500' : 'cursor-pointer hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-medium text-slate-800 dark:text-slate-200'}
                                   onClick={() => {
                                     if (m.locked) return
                                     if (label.startsWith('__new_') && !editGastoLabelValue) return
@@ -1196,7 +1211,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                         {/* Delete button */}
                         <td className="px-2 py-2">
                           <button
-                            className="opacity-0 group-hover/gasto:opacity-100 transition-opacity text-gray-300 hover:text-red-400 dark:text-gray-600 dark:hover:text-red-400"
+                            className="opacity-0 group-hover/gasto:opacity-100 transition-opacity text-slate-300 hover:text-red-400 dark:text-slate-600 dark:hover:text-red-400"
                             title="Eliminar fila"
                             onClick={() => removeGastoRow(label)}
                           >
@@ -1209,13 +1224,15 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                     )
                   })}
                   {/* TOTAL GASTOS row */}
-                  <tr className="bg-gray-50 dark:bg-gray-700/40 font-semibold">
-                    <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300 uppercase text-xs tracking-wide">TOTAL GASTOS</td>
+                  <tr className="bg-slate-50 dark:bg-slate-700/40 font-semibold">
+                    <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300 uppercase text-xs tracking-wide">TOTAL GASTOS</td>
                     {displayMonths.map((m, i) => {
-                      if (!m) return <td key={i} className="px-4 py-2.5 text-right text-gray-400">—</td>
+                      const hiddenCls = i === 0 ? ' hidden md:table-cell' : ''
+                      const currentCls = i === 2 ? ' bg-emerald-50/40 dark:bg-emerald-900/10' : ''
+                      if (!m) return <td key={i} className={`px-4 py-2.5 text-right text-slate-400${hiddenCls}${currentCls}`}>—</td>
                       const total = gastoRows.reduce((sum, label) => sum + (gastosByMonth[m.id]?.[label]?.amount ?? 0), 0)
                       return (
-                        <td key={i} className="px-4 py-2.5 text-right text-gray-800 dark:text-gray-200">
+                        <td key={i} className={`px-4 py-2.5 text-right text-slate-800 dark:text-slate-200${hiddenCls}${currentCls}`}>
                           {total.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                         </td>
                       )
@@ -1226,9 +1243,9 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
               </table>
             </div>
             {/* Add row button */}
-            <div className="px-4 py-2.5 border-t border-gray-100 dark:border-gray-700">
+            <div className="px-4 py-2.5 border-t border-slate-100 dark:border-slate-700">
               <button
-                className="inline-flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium transition-colors"
+                className="inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-medium transition-colors"
                 onClick={addGastoRow}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
@@ -1246,17 +1263,18 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
         const displayMonths = getDisplayMonths(months, selectedMonthId)
         if (displayMonths.every(m => m == null)) return null
         return (
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-              <h2 className="font-semibold text-gray-800 dark:text-gray-200 text-sm">Ingresos - Gastos</h2>
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
+              <h2 className="font-semibold text-slate-800 dark:text-slate-200 text-sm">Ingresos - Gastos</h2>
             </div>
-            <table className="w-full text-sm table-fixed">
-              <colgroup><col /><col className="w-36" /><col className="w-36" /><col className="w-36" /><col className="w-8" /></colgroup>
+            <div className="overflow-x-auto table-scroll">
+            <table className="w-full text-sm table-fixed" style={{minWidth:'320px'}}>
+              <colgroup><col className="min-w-[110px]" /><col className="hidden md:table-column w-32" /><col className="w-32" /><col className="w-32" /><col className="w-8" /></colgroup>
               <thead>
-                <tr className="border-b border-gray-100 dark:border-gray-700">
+                <tr className="border-b border-slate-100 dark:border-slate-700">
                   <th />
                   {monthLabels.map((label, i) => (
-                    <th key={i} className="text-right px-4 py-2 font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wide">
+                    <th key={i} className={`text-right px-4 py-2 font-semibold uppercase text-xs tracking-wide${i === 0 ? ' hidden md:table-cell text-slate-600 dark:text-slate-400' : i === 2 ? ' text-emerald-600 dark:text-emerald-400' : ' text-slate-600 dark:text-slate-400'}`}>
                       {label}
                     </th>
                   ))}
@@ -1267,7 +1285,9 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                 <tr>
                   <td />
                   {displayMonths.map((m, i) => {
-                    if (!m) return <td key={i} className="px-4 py-3 text-right text-gray-400">—</td>
+                    const hiddenCls = i === 0 ? ' hidden md:table-cell' : ''
+                    const currentCls = i === 2 ? ' bg-emerald-50/40 dark:bg-emerald-900/10' : ''
+                    if (!m) return <td key={i} className={`px-4 py-3 text-right text-slate-400${hiddenCls}${currentCls}`}>—</td>
                     const ingresos = (['julio', 'flor'] as const).reduce(
                       (sum, src) => sum + (incomeByMonth[m.id]?.[src]?.amount ?? 0), 0
                     )
@@ -1276,7 +1296,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                     )
                     const balance = ingresos - gastos
                     return (
-                      <td key={i} className={`px-4 py-3 text-right font-semibold ${balance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
+                      <td key={i} className={`px-4 py-3 text-right font-semibold${hiddenCls}${currentCls} ${balance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
                         {balance.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                       </td>
                     )
@@ -1285,6 +1305,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                 </tr>
               </tbody>
             </table>
+            </div>
           </div>
         )
       })()}
@@ -1294,36 +1315,36 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
         const displayMonths = getDisplayMonths(months, selectedMonthId)
         if (displayMonths.every(m => m == null)) return null
         return (
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-              <h2 className="font-semibold text-gray-800 dark:text-gray-200 text-sm">Deudas</h2>
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
+              <h2 className="font-semibold text-slate-800 dark:text-slate-200 text-sm">Deudas</h2>
             </div>
-            <div className="overflow-visible">
-              <table className="w-full text-sm table-fixed">
-                <colgroup><col /><col className="w-36" /><col className="w-36" /><col className="w-36" /><col className="w-8" /></colgroup>
+            <div className="overflow-x-auto table-scroll">
+              <table className="w-full text-sm table-fixed" style={{minWidth:'320px'}}>
+                <colgroup><col className="min-w-[110px]" /><col className="hidden md:table-column w-32" /><col className="w-32" /><col className="w-32" /><col className="w-8" /></colgroup>
                 <thead>
-                  <tr className="border-b border-gray-100 dark:border-gray-700">
-                    <th className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wide">DEUDA</th>
+                  <tr className="border-b border-slate-100 dark:border-slate-700">
+                    <th className="text-left px-4 py-2 font-semibold text-slate-600 dark:text-slate-400 uppercase text-xs tracking-wide">DEUDA</th>
                     {monthLabels.map((label, i) => (
-                      <th key={i} className="text-right px-4 py-2 font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wide">
+                      <th key={i} className={`text-right px-4 py-2 font-semibold uppercase text-xs tracking-wide ${i === 2 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>
                         {label}
                       </th>
                     ))}
                     <th />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
+                <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
                   {deudaRows.map(label => {
                     const isEditingLbl = editingDeudaLabel === label
                     const displayLabel = label.startsWith('__new_') ? '' : label
                     return (
-                      <tr key={label} className="group/deuda hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                      <tr key={label} className="group/deuda hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
                         <td className="px-4 py-2">
                           {isEditingLbl ? (
                             <input
                               autoFocus
                               type="text"
-                              className="w-full border border-indigo-400 dark:border-indigo-500 rounded px-2 py-0.5 text-sm text-gray-800 dark:text-gray-200 dark:bg-gray-700"
+                              className="w-full border border-emerald-400 dark:border-emerald-500 rounded px-2 py-0.5 text-sm text-slate-800 dark:text-slate-200 dark:bg-slate-700"
                               value={editDeudaLabelValue}
                               placeholder="Nombre de deuda..."
                               onChange={e => setEditDeudaLabelValue(e.target.value)}
@@ -1338,25 +1359,27 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                             />
                           ) : (
                             <span
-                              className="cursor-pointer text-gray-700 dark:text-gray-300 font-medium hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                              className="cursor-pointer text-slate-700 dark:text-slate-300 font-medium hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
                               onClick={() => { setEditingDeudaLabel(label); setEditDeudaLabelValue(displayLabel) }}
                             >
-                              {displayLabel || <em className="text-gray-400 not-italic">Sin nombre</em>}
+                              {displayLabel || <em className="text-slate-400 not-italic">Sin nombre</em>}
                             </span>
                           )}
                         </td>
                         {displayMonths.map((m, i) => {
-                          if (!m) return <td key={i} className="px-4 py-2 text-right text-gray-400">—</td>
+                          const hiddenCls = i === 0 ? ' hidden md:table-cell' : ''
+                          const currentCls = i === 2 ? ' bg-emerald-50/40 dark:bg-emerald-900/10' : ''
+                          if (!m) return <td key={i} className={`px-4 py-2 text-right text-slate-400${hiddenCls}${currentCls}`}>—</td>
                           const entry = deudasByMonth[m.id]?.[label]
                           const isEditingCell = editingDeudaCell?.monthId === m.id && editingDeudaCell?.label === label
                           return (
-                            <td key={i} className="px-4 py-2 text-right">
+                            <td key={i} className={`px-4 py-2 text-right${hiddenCls}${currentCls}`}>
                               {isEditingCell ? (
                                 <input
                                   autoFocus
                                   type="number"
                                   step="0.01"
-                                  className="w-full min-w-0 border border-indigo-400 dark:border-indigo-500 rounded px-2 py-0.5 text-sm text-right font-medium text-gray-800 dark:text-gray-200 dark:bg-gray-700"
+                                  className="w-full min-w-0 border border-emerald-400 dark:border-emerald-500 rounded px-2 py-0.5 text-sm text-right font-medium text-slate-800 dark:text-slate-200 dark:bg-slate-700"
                                   value={editDeudaCellValue}
                                   onChange={e => setEditDeudaCellValue(e.target.value)}
                                   onBlur={() => saveDeudaCell(m.id, label)}
@@ -1367,7 +1390,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                                 />
                               ) : (
                                 <span
-                                  className={m.locked ? 'font-medium text-gray-400 dark:text-gray-500' : 'cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors font-medium text-gray-800 dark:text-gray-200'}
+                                  className={m.locked ? 'font-medium text-slate-400 dark:text-slate-500' : 'cursor-pointer hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-medium text-slate-800 dark:text-slate-200'}
                                   onClick={() => {
                                     if (m.locked) return
                                     if (label.startsWith('__new_')) return
@@ -1383,7 +1406,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                         })}
                         <td className="px-2 py-2">
                           <button
-                            className="opacity-0 group-hover/deuda:opacity-100 transition-opacity text-gray-300 hover:text-red-400 dark:text-gray-600 dark:hover:text-red-400"
+                            className="opacity-0 group-hover/deuda:opacity-100 transition-opacity text-slate-300 hover:text-red-400 dark:text-slate-600 dark:hover:text-red-400"
                             title="Eliminar fila"
                             onClick={() => removeDeudaRow(label)}
                           >
@@ -1395,13 +1418,15 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                       </tr>
                     )
                   })}
-                  <tr className="bg-gray-50 dark:bg-gray-700/40 font-semibold">
-                    <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300 uppercase text-xs tracking-wide">TOTAL DEUDAS</td>
+                  <tr className="bg-slate-50 dark:bg-slate-700/40 font-semibold">
+                    <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300 uppercase text-xs tracking-wide">TOTAL DEUDAS</td>
                     {displayMonths.map((m, i) => {
-                      if (!m) return <td key={i} className="px-4 py-2.5 text-right text-gray-400">—</td>
+                      const hiddenCls = i === 0 ? ' hidden md:table-cell' : ''
+                      const currentCls = i === 2 ? ' bg-emerald-50/40 dark:bg-emerald-900/10' : ''
+                      if (!m) return <td key={i} className={`px-4 py-2.5 text-right text-slate-400${hiddenCls}${currentCls}`}>—</td>
                       const total = deudaRows.reduce((sum, label) => sum + (deudasByMonth[m.id]?.[label]?.amount ?? 0), 0)
                       return (
-                        <td key={i} className="px-4 py-2.5 text-right text-gray-800 dark:text-gray-200">
+                        <td key={i} className={`px-4 py-2.5 text-right text-slate-800 dark:text-slate-200${hiddenCls}${currentCls}`}>
                           {total.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                         </td>
                       )
@@ -1411,9 +1436,9 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                 </tbody>
               </table>
             </div>
-            <div className="px-4 py-2.5 border-t border-gray-100 dark:border-gray-700">
+            <div className="px-4 py-2.5 border-t border-slate-100 dark:border-slate-700">
               <button
-                className="inline-flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium transition-colors"
+                className="inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-medium transition-colors"
                 onClick={addDeudaRow}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
@@ -1427,10 +1452,10 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
       })()}
 
       {/* Repartición de pagos/gastos */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2">
-          <h2 className="font-semibold text-gray-800 dark:text-gray-200 text-sm">Repartición de pagos/gastos</h2>
-          {distLoading && <span className="text-xs text-gray-400 dark:text-gray-500">Cargando...</span>}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2">
+          <h2 className="font-semibold text-slate-800 dark:text-slate-200 text-sm">Repartición de pagos/gastos</h2>
+          {distLoading && <span className="text-xs text-slate-400 dark:text-slate-500">Cargando...</span>}
         </div>
         <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
           <table className="text-xs table-fixed w-full" style={{minWidth: `${192 + DIST_COLS.length * 112 + 32}px`}}>
@@ -1440,23 +1465,23 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
               <col className="w-8" />
             </colgroup>
             <thead className="sticky top-0 z-10">
-              <tr className="bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700">
-                <th className="text-left px-3 py-2 font-medium text-gray-500 dark:text-gray-400 sticky left-0 z-20 bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700">GASTO/EGRESO</th>
+              <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700">
+                <th className="text-left px-3 py-2 font-medium text-slate-500 dark:text-slate-400 sticky left-0 z-20 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700">GASTO/EGRESO</th>
                 {DIST_COLS.map(c => (
-                  <th key={c.key} className="text-right px-3 py-2 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">{c.label}</th>
+                  <th key={c.key} className="text-right px-3 py-2 font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">{c.label}</th>
                 ))}
                 <th className="px-3 py-2" />
               </tr>
             </thead>
             <tbody>
               {distRows.map(row => (
-                <tr key={row.id} className="group/dist border-b border-gray-50 dark:border-gray-700/50 last:border-0 hover:bg-gray-50/50 dark:hover:bg-gray-700/30">
-                  <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 group-hover/dist:bg-gray-50 dark:group-hover/dist:bg-gray-700/30 border-r border-gray-100 dark:border-gray-700 px-4 py-2 min-w-[192px]">
+                <tr key={row.id} className="group/dist border-b border-slate-50 dark:border-slate-700/50 last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-700/30">
+                  <td className="sticky left-0 z-10 bg-white dark:bg-slate-800 group-hover/dist:bg-slate-50 dark:group-hover/dist:bg-slate-700/30 border-r border-slate-100 dark:border-slate-700 px-4 py-2 min-w-[192px]">
                     {editingDistCell?.rowId === row.id && editingDistCell.field === 'gasto_egreso' ? (
                       <input
                         autoFocus
                         type="text"
-                        className="w-full min-w-0 border border-indigo-400 dark:border-indigo-500 rounded px-2 py-0.5 text-sm text-gray-800 dark:text-gray-200 dark:bg-gray-700"
+                        className="w-full min-w-0 border border-emerald-400 dark:border-emerald-500 rounded px-2 py-0.5 text-sm text-slate-800 dark:text-slate-200 dark:bg-slate-700"
                         value={editDistCellValue}
                         onChange={e => setEditDistCellValue(e.target.value)}
                         onBlur={() => commitDistCell(row.id, 'gasto_egreso', editDistCellValue)}
@@ -1467,10 +1492,10 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                       />
                     ) : (
                       <span
-                        className={isSelectedMonthLocked ? 'font-medium text-gray-400 dark:text-gray-500' : 'cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors font-medium text-gray-800 dark:text-gray-200'}
+                        className={isSelectedMonthLocked ? 'font-medium text-slate-400 dark:text-slate-500' : 'cursor-pointer hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-medium text-slate-800 dark:text-slate-200'}
                         onClick={() => { if (isSelectedMonthLocked) return; setEditingDistCell({ rowId: row.id, field: 'gasto_egreso' }); setEditDistCellValue(row.gasto_egreso) }}
                       >
-                        {row.gasto_egreso || <em className="text-gray-400 not-italic font-normal">Sin nombre</em>}
+                        {row.gasto_egreso || <em className="text-slate-400 not-italic font-normal">Sin nombre</em>}
                       </span>
                     )}
                   </td>
@@ -1481,7 +1506,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                     return (
                       <td key={c.key} className="px-4 py-2 text-right">
                         {isAuto ? (
-                          <span className={`font-medium ${effectiveVal > 0 ? 'text-indigo-500 dark:text-indigo-400' : 'text-gray-300 dark:text-gray-700'}`}>
+                          <span className={`font-medium ${effectiveVal > 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-slate-300 dark:text-slate-700'}`}>
                             {effectiveVal > 0 ? effectiveVal.toLocaleString('es-PE', { minimumFractionDigits: 2 }) : '—'}
                           </span>
                         ) : editingDistCell?.rowId === row.id && editingDistCell.field === c.key ? (
@@ -1489,7 +1514,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                             autoFocus
                             type="number"
                             step="0.01"
-                            className="w-full min-w-0 border border-indigo-400 dark:border-indigo-500 rounded px-2 py-0.5 text-sm text-right font-medium text-gray-800 dark:text-gray-200 dark:bg-gray-700"
+                            className="w-full min-w-0 border border-emerald-400 dark:border-emerald-500 rounded px-2 py-0.5 text-sm text-right font-medium text-slate-800 dark:text-slate-200 dark:bg-slate-700"
                             value={editDistCellValue}
                             onChange={e => setEditDistCellValue(e.target.value)}
                             onBlur={() => commitDistCell(row.id, c.key, editDistCellValue)}
@@ -1500,7 +1525,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                           />
                         ) : (
                           <span
-                            className={isSelectedMonthLocked ? 'font-medium text-gray-400 dark:text-gray-500' : `cursor-pointer transition-colors font-medium ${effectiveVal > 0 ? 'text-gray-800 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-indigo-400' : 'text-gray-300 dark:text-gray-700 hover:text-indigo-400'}`}
+                            className={isSelectedMonthLocked ? 'font-medium text-slate-400 dark:text-slate-500' : `cursor-pointer transition-colors font-medium ${effectiveVal > 0 ? 'text-slate-800 dark:text-slate-200 hover:text-emerald-600 dark:hover:text-emerald-400' : 'text-slate-300 dark:text-slate-700 hover:text-emerald-400'}`}
                             onClick={() => { if (isSelectedMonthLocked) return; setEditingDistCell({ rowId: row.id, field: c.key }); setEditDistCellValue(effectiveVal === 0 ? '' : effectiveVal.toString()) }}
                           >
                             {effectiveVal > 0 ? effectiveVal.toLocaleString('es-PE', { minimumFractionDigits: 2 }) : '—'}
@@ -1512,7 +1537,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                   <td className="px-2 py-2">
                     <button
                       onClick={() => { if (isSelectedMonthLocked) return; deleteDistRow(row) }}
-                      className={isSelectedMonthLocked ? 'hidden' : 'opacity-0 group-hover/dist:opacity-100 transition-opacity text-gray-300 hover:text-red-400 dark:text-gray-600 dark:hover:text-red-400'}
+                      className={isSelectedMonthLocked ? 'hidden' : 'opacity-0 group-hover/dist:opacity-100 transition-opacity text-slate-300 hover:text-red-400 dark:text-slate-600 dark:hover:text-red-400'}
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
@@ -1528,8 +1553,8 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                   - gastoRows.reduce((sum, label) => sum + (gastosByMonth[selectedMonthId]?.[label]?.amount ?? 0), 0)
                   - deudaRows.reduce((sum, label) => sum + (deudasByMonth[selectedMonthId]?.[label]?.amount ?? 0), 0)
                 return (
-                  <tr className="border-t border-gray-100 dark:border-gray-700 bg-amber-50/50 dark:bg-amber-900/10">
-                    <td className="sticky left-0 z-10 bg-amber-50/50 dark:bg-amber-900/10 border-r border-gray-100 dark:border-gray-700 px-4 py-2 font-medium text-amber-700 dark:text-amber-400 text-xs">Sobrante</td>
+                  <tr className="border-t border-slate-100 dark:border-slate-700 bg-amber-50/50 dark:bg-amber-900/10">
+                    <td className="sticky left-0 z-10 bg-amber-50/50 dark:bg-amber-900/10 border-r border-slate-100 dark:border-slate-700 px-4 py-2 font-medium text-amber-700 dark:text-amber-400 text-xs">Sobrante</td>
                     {DIST_COLS.map(c => (
                       <td key={c.key} className="px-4 py-2 text-right">
                         {c.key === 'power' ? (
@@ -1537,7 +1562,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                             {sobrante.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                           </span>
                         ) : (
-                          <span className="text-gray-300 dark:text-gray-700 text-xs">—</span>
+                          <span className="text-slate-300 dark:text-slate-700 text-xs">—</span>
                         )}
                       </td>
                     ))}
@@ -1566,29 +1591,29 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                 const matches = Math.abs(grandTotal - ingresoTotal) < 0.01
                 return (
                   <>
-                    <tr className="bg-gray-50 dark:bg-gray-900/50 border-t-2 border-gray-200 dark:border-gray-600">
-                      <td className="sticky left-0 z-20 bg-gray-50 dark:bg-gray-900/50 border-r border-gray-200 dark:border-gray-700 px-4 py-2 font-semibold text-gray-700 dark:text-gray-300 uppercase text-xs tracking-wide">TOTAL</td>
+                    <tr className="bg-slate-50 dark:bg-slate-900/50 border-t-2 border-slate-200 dark:border-slate-600">
+                      <td className="sticky left-0 z-20 bg-slate-50 dark:bg-slate-900/50 border-r border-slate-200 dark:border-slate-700 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 uppercase text-xs tracking-wide">TOTAL</td>
                       {colTotals.map((total, i) => (
-                        <td key={DIST_COLS[i].key} className="px-4 py-2 text-right font-semibold text-gray-800 dark:text-gray-200 text-xs">
+                        <td key={DIST_COLS[i].key} className="px-4 py-2 text-right font-semibold text-slate-800 dark:text-slate-200 text-xs">
                           {total.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                         </td>
                       ))}
                       <td />
                     </tr>
-                    <tr className={`sticky bottom-0 z-10 border-t border-gray-200 dark:border-gray-600 ${matches ? 'bg-emerald-100 dark:bg-emerald-900' : 'bg-red-100 dark:bg-red-900'}`}>
-                      <td className={`sticky left-0 z-20 border-r border-gray-200 dark:border-gray-700 px-4 py-2 text-xs font-semibold uppercase tracking-wide ${matches ? 'bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300' : 'bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300'}`}>
+                    <tr className={`sticky bottom-0 z-10 border-t border-slate-200 dark:border-slate-600 ${matches ? 'bg-emerald-100 dark:bg-emerald-900' : 'bg-red-100 dark:bg-red-900'}`}>
+                      <td className={`sticky left-0 z-20 border-r border-slate-200 dark:border-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-wide ${matches ? 'bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300' : 'bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300'}`}>
                         {matches ? '✓ Cuadra' : '✗ No cuadra'}
                       </td>
                       <td colSpan={DIST_COLS.length} className="px-4 py-2">
                         <div className="flex items-center justify-start gap-3 text-xs">
-                          <span className="text-gray-500 dark:text-gray-400">
+                          <span className="text-slate-500 dark:text-slate-400">
                             Repartición: <span className={`font-semibold ${matches ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
                               {grandTotal.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                             </span>
                           </span>
                           <span className={`font-bold ${matches ? 'text-emerald-500' : 'text-red-400'}`}>{matches ? '=' : '≠'}</span>
-                          <span className="text-gray-500 dark:text-gray-400">
-                            Ingresos: <span className="font-semibold text-gray-700 dark:text-gray-300">
+                          <span className="text-slate-500 dark:text-slate-400">
+                            Ingresos: <span className="font-semibold text-slate-700 dark:text-slate-300">
                               {ingresoTotal.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                             </span>
                           </span>
@@ -1602,9 +1627,9 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
             </tbody>
           </table>
         </div>
-        <div className="px-4 py-2.5 border-t border-gray-100 dark:border-gray-700">
+        <div className="px-4 py-2.5 border-t border-slate-100 dark:border-slate-700">
           <button
-            className={isSelectedMonthLocked ? 'hidden' : 'inline-flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium transition-colors'}
+            className={isSelectedMonthLocked ? 'hidden' : 'inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-medium transition-colors'}
             onClick={addDistRow}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
@@ -1613,9 +1638,9 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
             Agregar fila
           </button>
         </div>
-        <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-600 flex items-center justify-between">
-          <div className="text-xs text-gray-400 dark:text-gray-500 max-w-xs leading-snug">
-            Aplica los totales al mes <span className="font-medium text-gray-600 dark:text-gray-300">{MONTH_NAMES[months.find(m => m.id === selectedMonthId)?.month ?? 0] ?? ''}</span> en Cuentas y Power
+        <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-600 flex items-center justify-between">
+          <div className="text-xs text-slate-400 dark:text-slate-500 max-w-xs leading-snug">
+            Aplica los totales al mes <span className="font-medium text-slate-600 dark:text-slate-300">{MONTH_NAMES[months.find(m => m.id === selectedMonthId)?.month ?? 0] ?? ''}</span> en Cuentas y Power
           </div>
           <div className="flex items-center gap-3">
             {applyResult === 'success' && (
@@ -1638,7 +1663,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
               ) : (
                 <button
                   onClick={() => lockMonth(selMonth.id)}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-gray-200 hover:bg-gray-300 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-200 transition-colors"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
                   Bloquear mes
@@ -1648,7 +1673,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
             <button
               onClick={applyReparticion}
               disabled={applying || isSelectedMonthLocked}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed text-white transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 disabled:cursor-not-allowed text-white transition-colors"
             >
               {applying ? (
                 <>

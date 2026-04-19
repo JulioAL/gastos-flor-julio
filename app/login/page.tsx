@@ -33,11 +33,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-md p-10 flex flex-col items-center gap-6 w-full max-w-sm">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-md p-10 flex flex-col items-center gap-6 w-full max-w-sm">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Gastos Julio & Flor</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Ingresa con tu cuenta</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Gastos Julio & Flor</h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm">Ingresa con tu cuenta</p>
         </div>
 
         <form onSubmit={signInWithEmail} className="w-full flex flex-col gap-3">
@@ -47,7 +47,7 @@ export default function LoginPage() {
             value={email}
             onChange={e => setEmail(e.target.value)}
             required
-            className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2.5 text-sm text-gray-800 dark:text-gray-200 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2.5 text-sm text-slate-800 dark:text-slate-200 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400"
           />
           <input
             type="password"
@@ -55,13 +55,13 @@ export default function LoginPage() {
             value={password}
             onChange={e => setPassword(e.target.value)}
             required
-            className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2.5 text-sm text-gray-800 dark:text-gray-200 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2.5 text-sm text-slate-800 dark:text-slate-200 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400"
           />
           {error && <p className="text-xs text-red-500">{error}</p>}
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-medium rounded-lg px-4 py-2.5 text-sm transition"
+            className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-medium rounded-lg px-4 py-2.5 text-sm transition"
           >
             {loading ? 'Ingresando...' : 'Ingresar'}
           </button>

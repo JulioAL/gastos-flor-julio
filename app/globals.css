@@ -3,13 +3,13 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fafc;
+  --foreground: #0f172a;
 }
 
 .dark {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  --background: #020617;
+  --foreground: #f1f5f9;
 }
 
 @theme inline {
@@ -23,6 +23,25 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Sticky first column for scrollable budget tables */
+.table-scroll thead tr th:first-child,
+.table-scroll tbody tr td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  background-color: #ffffff;
+}
+.dark .table-scroll thead tr th:first-child,
+.dark .table-scroll tbody tr td:first-child {
+  background-color: #0f172a; /* slate-900 */
+}
+.table-scroll tbody tr:hover td:first-child {
+  background-color: #f8fafc; /* slate-50 */
+}
+.dark .table-scroll tbody tr:hover td:first-child {
+  background-color: #1e293b; /* slate-800 */
 }
 
 @layer base {
@@ -43,10 +62,10 @@ body {
   .dark input,
   .dark textarea,
   .dark select {
-    color: #e5e7eb !important;
-    background-color: #1f2937 !important;
+    color: #e2e8f0 !important;
+    background-color: #1e293b !important;
     color-scheme: dark !important;
-    border-color: #374151 !important;
+    border-color: #334155 !important;
   }
 
   .dark input::placeholder,

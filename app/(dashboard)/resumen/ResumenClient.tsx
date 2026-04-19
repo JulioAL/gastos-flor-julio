@@ -7,7 +7,7 @@ import { MONTH_NAMES, ACCOUNTS, EXPENSE_COLUMNS, CORTE_ACCOUNT_GROUPS, getCatego
 import type { BudgetMonth, BudgetIncome, BudgetExpense, BudgetTransfer, PersonalExpense } from '@/lib/supabase/types'
 // BudgetTransfer kept for setTransfers state type
 
-const CHART_COLORS = ['#6366f1','#22c55e','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#14b8a6','#f97316','#84cc16']
+const CHART_COLORS = ['#059669','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#14b8a6','#f97316','#84cc16']
 
 const POWER_COLS = ['carro','ahorro_casa','ahorro_extra','sueldo','cts','intereses_ganados','gratificaciones','afp','emergencia','jf_baby','bonos_utilidades','salud'] as const
 
@@ -67,7 +67,7 @@ export default function ResumenClient({ months, expenses, allExpenses }: Props) 
     if (!selectedMonthId) return
     setLoading(true)
     Promise.all([
-      supabase.from('budget_income').select('*').eq('budget_month_id', selectedMonthId),
+      (supabase.from('budget_income') as any).select('*').eq('budget_month_id', selectedMonthId).in('source', ['julio', 'flor', 'otros_ingresos']),
       supabase.from('budget_expenses').select('*').eq('budget_month_id', selectedMonthId),
       supabase.from('budget_transfers').select('*').eq('budget_month_id', selectedMonthId),
     ]).then(([inc, exp, tra]) => {
@@ -226,11 +226,11 @@ export default function ResumenClient({ months, expenses, allExpenses }: Props) 
 
 
   return (
-    <div className="space-y-6 pb-20 sm:pb-0">
+    <div className="space-y-6 pb-0">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Resumen</h1>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">Resumen</h1>
         <select
-          className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm"
+          className="border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm"
           value={selectedMonthId}
           onChange={e => setSelectedMonthId(e.target.value)}
         >
@@ -241,103 +241,31 @@ export default function ResumenClient({ months, expenses, allExpenses }: Props) 
       </div>
 
       {loading ? (
-        <p className="text-gray-400 dark:text-gray-500 text-sm">Cargando...</p>
+        <p className="text-slate-400 dark:text-slate-500 text-sm">Cargando...</p>
       ) : (
         <>
-          {/* Hero cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-green-50 dark:bg-green-900/30 rounded-xl p-4">
-              <p className="text-xs text-green-600 dark:text-green-400 font-medium">Ingresos</p>
-              <p className="text-base font-bold text-green-700 dark:text-green-400">{fmt(totalIncome)}</p>
-            </div>
-            <div className="bg-indigo-50 dark:bg-indigo-900/30 rounded-xl p-4">
-              <p className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">Presupuestado</p>
-              <p className="text-base font-bold text-indigo-700 dark:text-indigo-400">{fmt(totalBudgeted)}</p>
-            </div>
-            <div className="bg-rose-50 dark:bg-rose-900/30 rounded-xl p-4">
-              <p className="text-xs text-rose-600 dark:text-rose-400 font-medium">Real</p>
-              <p className="text-base font-bold text-rose-700 dark:text-rose-400">{fmt(totalReal)}</p>
-              {totalBudgeted > 0 && (
-                <p className={`text-xs mt-0.5 font-medium ${totalReal > totalBudgeted ? 'text-red-500' : 'text-green-600'}`}>
-                  {totalReal > totalBudgeted ? '+' : ''}{fmt(totalReal - totalBudgeted)} vs presupuesto
-                </p>
-              )}
-            </div>
-            <div className={`${balance >= 0 ? 'bg-teal-50 dark:bg-teal-900/30' : 'bg-orange-50 dark:bg-orange-900/30'} rounded-xl p-4`}>
-              <p className={`text-xs font-medium ${balance >= 0 ? 'text-teal-600 dark:text-teal-400' : 'text-orange-600 dark:text-orange-400'}`}>Balance</p>
-              <p className={`text-base font-bold ${balance >= 0 ? 'text-teal-700 dark:text-teal-400' : 'text-orange-700 dark:text-orange-400'}`}>{fmt(balance)}</p>
-            </div>
-          </div>
 
           {/* Scotiabank accounts */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-              <h2 className="font-semibold text-gray-800 dark:text-gray-200 text-sm">Resumen por cuenta Scotiabank</h2>
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
+              <h2 className="font-semibold text-slate-800 dark:text-slate-200 text-sm">Resumen por cuenta Scotiabank</h2>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-gray-100 dark:divide-gray-700">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 dark:divide-slate-700">
               {ACCOUNTS.map(acc => {
                 const amt = acc.key === 'power' ? powerTotal : (scotByAccount[acc.key] ?? 0)
                 return (
                   <div key={acc.key} className="p-4">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{acc.label}</p>
-                    <p className="text-lg font-bold text-gray-800 dark:text-gray-200 mt-1">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{acc.label}</p>
+                    <p className="text-lg font-bold text-slate-800 dark:text-slate-200 mt-1">
                       S/ {amt.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                     </p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{acc.description}</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{acc.description}</p>
                   </div>
                 )
               })}
             </div>
           </div>
 
-          {/* Comparison by account */}
-          {(comparisonAccounts.length > 0 || (realByAccount['_pending'] ?? 0) > 0) && (
-            <Section title="Presupuestado vs Real por cuenta">
-              <div className="space-y-4">
-                {comparisonAccounts.map(acc => {
-                  const budgeted = budgetByAccount[acc.key] ?? 0
-                  const real = realByAccount[acc.key] ?? 0
-                  const diff = real - budgeted
-                  const pct = budgeted > 0 ? (real / budgeted) * 100 : (real > 0 ? 100 : 0)
-                  const over = diff > 0 && budgeted > 0
-                  return (
-                    <div key={acc.key}>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{acc.label}</span>
-                        <div className="flex gap-3 items-center">
-                          <span className="text-xs text-gray-400 dark:text-gray-500">
-                            Pres. {fmt(budgeted)}
-                          </span>
-                          <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                            Real {fmt(real)}
-                          </span>
-                          {budgeted > 0 && (
-                            <span className={`text-xs font-bold ${over ? 'text-red-500 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
-                              {over ? '+' : ''}{fmt(diff)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all duration-300 ${over ? 'bg-red-400 dark:bg-red-500' : 'bg-green-400 dark:bg-green-500'}`}
-                          style={{ width: `${Math.min(pct, 100)}%` }}
-                        />
-                      </div>
-                      {pct > 100 && (
-                        <p className="text-xs text-red-400 dark:text-red-500 mt-0.5">{pct.toFixed(0)}% del presupuesto</p>
-                      )}
-                    </div>
-                  )
-                })}
-                {(realByAccount['_pending'] ?? 0) > 0 && (
-                  <p className="text-xs text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 rounded-lg px-3 py-2">
-                    {fmt(realByAccount['_pending'])} en gastos hogar sin cuenta asignada
-                  </p>
-                )}
-              </div>
-            </Section>
-          )}
 
           {/* Income */}
           {income.length > 0 && (
@@ -345,10 +273,10 @@ export default function ResumenClient({ months, expenses, allExpenses }: Props) 
               <table className="w-full text-sm">
                 <tbody>
                   {income.map(i => (
-                    <tr key={i.id} className="border-b border-gray-100 dark:border-gray-700 last:border-0">
-                      <td className="py-2 text-gray-700 dark:text-gray-300">{i.description ?? i.source}</td>
-                      <td className="py-2 text-right font-medium text-gray-900 dark:text-gray-100">{fmt(i.amount ?? 0)}</td>
-                      {!i.included_in_budget && <td className="py-2 pl-2 text-xs text-gray-400 dark:text-gray-500">no incluido</td>}
+                    <tr key={i.id} className="border-b border-slate-100 dark:border-slate-700 last:border-0">
+                      <td className="py-2 text-slate-700 dark:text-slate-300">{i.description ?? i.source}</td>
+                      <td className="py-2 text-right font-medium text-slate-900 dark:text-slate-100">{fmt(i.amount ?? 0)}</td>
+                      {!i.included_in_budget && <td className="py-2 pl-2 text-xs text-slate-400 dark:text-slate-500">no incluido</td>}
                     </tr>
                   ))}
                 </tbody>
@@ -358,16 +286,16 @@ export default function ResumenClient({ months, expenses, allExpenses }: Props) 
 
           {/* Hogar / Personal tabs */}
           <div className="space-y-3">
-            <div className="flex gap-1 bg-gray-100 dark:bg-gray-700/50 rounded-xl p-1">
+            <div className="flex gap-1 bg-slate-100 dark:bg-slate-800/50 rounded-xl p-1">
               <button
                 onClick={() => setActiveTab('hogar')}
-                className={`flex-1 py-1.5 text-sm font-medium rounded-lg transition ${activeTab === 'hogar' ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                className={`flex-1 py-1.5 text-sm font-medium rounded-lg transition ${activeTab === 'hogar' ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}
               >
                 Hogar
               </button>
               <button
                 onClick={() => setActiveTab('personal')}
-                className={`flex-1 py-1.5 text-sm font-medium rounded-lg transition ${activeTab === 'personal' ? 'bg-white dark:bg-gray-800 text-purple-600 dark:text-purple-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                className={`flex-1 py-1.5 text-sm font-medium rounded-lg transition ${activeTab === 'personal' ? 'bg-white dark:bg-slate-800 text-purple-600 dark:text-purple-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}
               >
                 Personal
               </button>
@@ -386,7 +314,7 @@ export default function ResumenClient({ months, expenses, allExpenses }: Props) 
                         <Tooltip formatter={(v) => fmt(Number(v))} contentStyle={{ backgroundColor: isDark ? '#1f2937' : '#fff', border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`, borderRadius: 8, color: isDark ? '#f9fafb' : '#111827' }} />
                       </PieChart>
                     </ResponsiveContainer>
-                    <p className="text-center text-sm font-semibold text-gray-700 dark:text-gray-300 mt-1">
+                    <p className="text-center text-sm font-semibold text-slate-700 dark:text-slate-300 mt-1">
                       Total: {fmt(hogarPieData.reduce((s, d) => s + d.value, 0))}
                     </p>
                   </Section>
@@ -398,28 +326,28 @@ export default function ResumenClient({ months, expenses, allExpenses }: Props) 
                         <XAxis type="number" tick={{ fontSize: 10, fill: isDark ? '#9ca3af' : '#6b7280' }} tickFormatter={v => `S/${v}`} />
                         <YAxis type="category" dataKey="cat" tick={{ fontSize: 10, fill: isDark ? '#d1d5db' : '#374151' }} width={130} />
                         <Tooltip formatter={(v) => fmt(Number(v))} contentStyle={{ backgroundColor: isDark ? '#1f2937' : '#fff', border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`, borderRadius: 8, color: isDark ? '#f9fafb' : '#111827' }} />
-                        <Bar dataKey="total" fill="#6366f1" radius={[0, 4, 4, 0]} />
+                        <Bar dataKey="total" fill="#059669" radius={[0, 4, 4, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </Section>
                 )}
                 {hogarTop5.length > 0 && (
                   <Section title="Top 5 gastos hogar">
-                    <div className="divide-y divide-gray-50 dark:divide-gray-700">
+                    <div className="divide-y divide-slate-50 dark:divide-slate-700">
                       {hogarTop5.map(({ e, amt }, i) => (
                         <div key={e.id} className="py-2.5 flex justify-between items-center">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-gray-400 dark:text-gray-500 w-4">#{i + 1}</span>
-                            <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-44">{e.description}</span>
+                            <span className="text-xs font-bold text-slate-400 dark:text-slate-500 w-4">#{i + 1}</span>
+                            <span className="text-sm text-slate-700 dark:text-slate-300 truncate max-w-44">{e.description}</span>
                           </div>
-                          <span className="font-bold text-sm text-gray-800 dark:text-gray-200 shrink-0">{fmt(amt)}</span>
+                          <span className="font-bold text-sm text-slate-800 dark:text-slate-200 shrink-0">{fmt(amt)}</span>
                         </div>
                       ))}
                     </div>
                   </Section>
                 )}
                 {hogarPieData.length === 0 && hogarTagBar.length === 0 && hogarTop5.length === 0 && (
-                  <p className="text-sm text-gray-400 dark:text-gray-500 col-span-2">Sin gastos hogar este mes.</p>
+                  <p className="text-sm text-slate-400 dark:text-slate-500 col-span-2">Sin gastos hogar este mes.</p>
                 )}
               </div>
             )}
@@ -437,7 +365,7 @@ export default function ResumenClient({ months, expenses, allExpenses }: Props) 
                         <Tooltip formatter={(v) => fmt(Number(v))} contentStyle={{ backgroundColor: isDark ? '#1f2937' : '#fff', border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`, borderRadius: 8, color: isDark ? '#f9fafb' : '#111827' }} />
                       </PieChart>
                     </ResponsiveContainer>
-                    <p className="text-center text-sm font-semibold text-gray-700 dark:text-gray-300 mt-1">
+                    <p className="text-center text-sm font-semibold text-slate-700 dark:text-slate-300 mt-1">
                       Total: {fmt(personalPieData.reduce((s, d) => s + d.value, 0))}
                     </p>
                   </Section>
@@ -449,28 +377,28 @@ export default function ResumenClient({ months, expenses, allExpenses }: Props) 
                         <XAxis type="number" tick={{ fontSize: 10, fill: isDark ? '#9ca3af' : '#6b7280' }} tickFormatter={v => `S/${v}`} />
                         <YAxis type="category" dataKey="cat" tick={{ fontSize: 10, fill: isDark ? '#d1d5db' : '#374151' }} width={130} />
                         <Tooltip formatter={(v) => fmt(Number(v))} contentStyle={{ backgroundColor: isDark ? '#1f2937' : '#fff', border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`, borderRadius: 8, color: isDark ? '#f9fafb' : '#111827' }} />
-                        <Bar dataKey="total" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+                        <Bar dataKey="total" fill="#a855f7" radius={[0, 4, 4, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </Section>
                 )}
                 {personalTop5.length > 0 && (
                   <Section title="Top 5 gastos personales">
-                    <div className="divide-y divide-gray-50 dark:divide-gray-700">
+                    <div className="divide-y divide-slate-50 dark:divide-slate-700">
                       {personalTop5.map(({ e, amt }, i) => (
                         <div key={e.id} className="py-2.5 flex justify-between items-center">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-gray-400 dark:text-gray-500 w-4">#{i + 1}</span>
-                            <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-44">{e.description}</span>
+                            <span className="text-xs font-bold text-slate-400 dark:text-slate-500 w-4">#{i + 1}</span>
+                            <span className="text-sm text-slate-700 dark:text-slate-300 truncate max-w-44">{e.description}</span>
                           </div>
-                          <span className="font-bold text-sm text-gray-800 dark:text-gray-200 shrink-0">{fmt(amt)}</span>
+                          <span className="font-bold text-sm text-slate-800 dark:text-slate-200 shrink-0">{fmt(amt)}</span>
                         </div>
                       ))}
                     </div>
                   </Section>
                 )}
                 {personalPieData.length === 0 && personalTagBar.length === 0 && personalTop5.length === 0 && (
-                  <p className="text-sm text-gray-400 dark:text-gray-500 col-span-2">Sin gastos personales este mes.</p>
+                  <p className="text-sm text-slate-400 dark:text-slate-500 col-span-2">Sin gastos personales este mes.</p>
                 )}
               </div>
             )}
@@ -484,9 +412,9 @@ export default function ResumenClient({ months, expenses, allExpenses }: Props) 
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-      <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-        <h2 className="font-semibold text-gray-800 dark:text-gray-200 text-sm">{title}</h2>
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+      <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
+        <h2 className="font-semibold text-slate-800 dark:text-slate-200 text-sm">{title}</h2>
       </div>
       <div className="px-4 py-3">{children}</div>
     </div>
