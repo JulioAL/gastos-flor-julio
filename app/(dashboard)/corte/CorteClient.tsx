@@ -257,11 +257,12 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
     <div className="max-w-2xl mx-auto px-4 py-6 pb-24 sm:pb-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">Corte de Cuentas</h1>
+        <h1 className="text-xl font-bold" style={{ color: 'var(--t)' }}>Corte de Cuentas</h1>
         <button
           onClick={() => setShowConfirmModal(true)}
           disabled={!hasToSettle || hasUnclassified || powerWithoutSubcuenta.length > 0}
-          className="px-4 py-2 rounded-lg text-sm font-medium bg-emerald-600 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-emerald-700 transition"
+          className="px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition"
+          style={{ background: 'var(--accent)', color: 'white' }}
         >
           Realizar Corte
         </button>
@@ -269,39 +270,39 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
 
       {/* Pending summary banner */}
       {hasPending ? (
-        <div className="mb-4 px-4 py-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-sm text-amber-800 dark:text-amber-300">
+        <div className="mb-4 px-4 py-3 rounded-2xl text-sm" style={{ background: 'color-mix(in oklch, var(--amber) 12%, transparent)', border: '1px solid color-mix(in oklch, var(--amber) 30%, transparent)', color: 'var(--t)' }}>
           <span className="font-semibold">{localPending.length} gasto{localPending.length !== 1 ? 's' : ''} pendientes</span>
           {earliestDate && (
-            <span className="ml-1">desde {formatDate(earliestDate)}</span>
+            <span className="ml-1" style={{ color: 'var(--t2)' }}>desde {formatDate(earliestDate)}</span>
           )}
         </div>
       ) : (
-        <div className="mb-4 px-4 py-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-sm text-green-800 dark:text-green-300">
+        <div className="mb-4 px-4 py-3 rounded-2xl text-sm" style={{ background: 'var(--asoft)', border: '1px solid var(--border)', color: 'var(--atext)' }}>
           Sin gastos pendientes. Todos los gastos han sido liquidados.
         </div>
       )}
 
       {/* Blocking issues — unclassified + power without subcuenta */}
       {(hasUnclassified || powerWithoutSubcuenta.length > 0) && (
-        <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-800 dark:text-red-300">
-          <p className="font-semibold mb-2">
+        <div className="mb-4 px-4 py-3 rounded-2xl text-sm" style={{ background: 'color-mix(in oklch, var(--red) 10%, transparent)', border: '1px solid color-mix(in oklch, var(--red) 25%, transparent)', color: 'var(--t)' }}>
+          <p className="font-semibold mb-2" style={{ color: 'var(--red)' }}>
             El corte no puede realizarse hasta resolver los siguientes gastos en el tab Gastos:
           </p>
           <ul className="space-y-1">
             {unclassifiedExpenses.map(e => (
               <li key={e.id} className="flex items-center gap-2 flex-wrap">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-400 dark:bg-red-500 flex-shrink-0" />
-                <span className="font-medium">{formatDate(e.date)}</span>
-                <span className="text-red-700 dark:text-red-400 truncate">{e.description}</span>
-                <span className="text-xs text-red-500 dark:text-red-400 italic">({unclassifiedLabel(e)})</span>
+                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--red)' }} />
+                <span className="font-medium" style={{ color: 'var(--t)' }}>{formatDate(e.date)}</span>
+                <span className="truncate" style={{ color: 'var(--t2)' }}>{e.description}</span>
+                <span className="text-xs italic" style={{ color: 'var(--red)' }}>({unclassifiedLabel(e)})</span>
               </li>
             ))}
             {powerWithoutSubcuenta.map(e => (
               <li key={e.id} className="flex items-center gap-2 flex-wrap">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-400 dark:bg-red-500 flex-shrink-0" />
-                <span className="font-medium">{formatDate(e.date)}</span>
-                <span className="text-red-700 dark:text-red-400 truncate">{e.description}</span>
-                <span className="text-xs text-red-500 dark:text-red-400 italic">
+                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--red)' }} />
+                <span className="font-medium" style={{ color: 'var(--t)' }}>{formatDate(e.date)}</span>
+                <span className="truncate" style={{ color: 'var(--t2)' }}>{e.description}</span>
+                <span className="text-xs italic" style={{ color: 'var(--red)' }}>
                   ({(e.power ?? 0) > 0 ? 'Power sin columna' : 'Otros (Power) sin columna'})
                 </span>
               </li>
@@ -313,7 +314,7 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
       {/* Cutoff date picker */}
       {hasPending && (
         <div className="mb-5 flex items-center gap-3">
-          <label className="text-sm text-slate-600 dark:text-slate-400 whitespace-nowrap">
+          <label className="text-sm whitespace-nowrap" style={{ color: 'var(--t2)' }}>
             Cortar hasta:
           </label>
           <input
@@ -324,10 +325,11 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
               setCutoffDate(e.target.value)
               setExpandedAccount(null)
             }}
-            className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="px-3 py-1.5 rounded-xl text-sm focus:outline-none"
+            style={{ border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--t)' }}
           />
           {expensesToSettle.length < localPending.length && (
-            <span className="text-xs text-slate-500 dark:text-slate-400">
+            <span className="text-xs" style={{ color: 'var(--t3)' }}>
               {expensesToSettle.length} de {localPending.length} gastos
             </span>
           )}
@@ -339,9 +341,9 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
         <div className="mb-6">
           <div className="grid grid-cols-2 gap-3">
             {/* Total card */}
-            <div className="col-span-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl px-4 py-3">
-              <p className="text-xs text-emerald-500 dark:text-emerald-400 font-medium mb-1">Total a transferir</p>
-              <p className="text-base font-bold text-emerald-800 dark:text-emerald-300">S/ {fmt(totalAmount)}</p>
+            <div className="col-span-2 rounded-2xl px-4 py-3" style={{ background: 'var(--asoft)', border: '1px solid var(--border)' }}>
+              <p className="text-xs font-medium mb-1" style={{ color: 'var(--atext)' }}>Total a transferir</p>
+              <p className="text-base font-bold" style={{ color: 'var(--accent)' }}>S/ {fmt(totalAmount)}</p>
             </div>
             {CORTE_ACCOUNT_GROUPS.map(group => {
               const amount = accountTotals[group.accountKey] ?? 0
@@ -356,18 +358,17 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
                   <button
                     onClick={() => setExpandedAccount(isExpanded ? null : group.accountKey)}
                     disabled={isEmpty}
-                    className={`w-full text-left px-4 py-3 rounded-xl border transition ${
-                      isEmpty
-                        ? 'bg-slate-50 dark:bg-slate-800/30 border-slate-200 dark:border-slate-700 opacity-50 cursor-default'
-                        : isExpanded
-                          ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-300 dark:border-emerald-700'
-                          : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-700'
-                    }`}
+                    className="w-full text-left px-4 py-3 rounded-2xl transition"
+                    style={isEmpty
+                      ? { background: 'var(--bg2)', border: '1px solid var(--border)', opacity: 0.5, cursor: 'default' }
+                      : isExpanded
+                        ? { background: 'var(--asoft)', border: '1px solid var(--accent)' }
+                        : { background: 'var(--surface)', border: '1px solid var(--border)' }}
                   >
-                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
+                    <p className="text-xs font-medium mb-1" style={{ color: 'var(--t2)' }}>
                       {group.label}
                     </p>
-                    <p className={`text-base font-bold ${isEmpty ? 'text-slate-400 dark:text-slate-600' : 'text-slate-900 dark:text-slate-100'}`}>
+                    <p className="text-base font-bold" style={{ color: isEmpty ? 'var(--t3)' : 'var(--t)' }}>
                       S/ {fmt(amount)}
                     </p>
                     {!isEmpty && (() => {
@@ -376,13 +377,13 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
                         : (budgetByAccount[group.accountKey] ?? 0)
                       const remaining = balance - amount
                       return balance > 0 ? (
-                        <p className={`text-xs mt-1 font-medium ${remaining >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
+                        <p className="text-xs mt-1 font-medium" style={{ color: remaining >= 0 ? 'var(--accent)' : 'var(--red)' }}>
                           {remaining >= 0 ? `Quedan S/ ${fmt(remaining)}` : `Excede S/ ${fmt(Math.abs(remaining))}`}
                         </p>
                       ) : null
                     })()}
                     {!isEmpty && (
-                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--t3)' }}>
                         {expensesInGroup.length} gasto{expensesInGroup.length !== 1 ? 's' : ''} {isExpanded ? '▲' : '▼'}
                       </p>
                     )}
@@ -390,36 +391,36 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
 
                   {/* Inline breakdown */}
                   {isExpanded && (
-                    <div className="col-span-2 mt-2 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div className="col-span-2 mt-2 rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="bg-slate-50 dark:bg-slate-800 text-xs text-slate-500 dark:text-slate-400">
+                          <tr className="text-xs" style={{ background: 'var(--bg2)', color: 'var(--t3)' }}>
                             <th className="text-left px-3 py-2">Fecha</th>
                             <th className="text-left px-3 py-2">Descripción</th>
                             <th className="text-right px-3 py-2">Monto</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                          {expensesInGroup.map(e => (
-                            <tr key={e.id} className="bg-white dark:bg-slate-900">
-                              <td className="px-3 py-2 text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                        <tbody>
+                          {expensesInGroup.map((e, i) => (
+                            <tr key={e.id} style={{ background: 'var(--surface)', borderTop: i > 0 ? '1px solid var(--border)' : undefined }}>
+                              <td className="px-3 py-2 whitespace-nowrap" style={{ color: 'var(--t3)' }}>
                                 {formatDate(e.date)}
                               </td>
-                              <td className="px-3 py-2 text-slate-900 dark:text-slate-100">
+                              <td className="px-3 py-2" style={{ color: 'var(--t)' }}>
                                 {e.description}
                               </td>
-                              <td className="px-3 py-2 text-right font-medium text-slate-900 dark:text-slate-100 whitespace-nowrap">
+                              <td className="px-3 py-2 text-right font-medium whitespace-nowrap" style={{ color: 'var(--t)' }}>
                                 S/ {fmt(getExpenseAmountForGroup(e, group.expenseColumns))}
                               </td>
                             </tr>
                           ))}
                         </tbody>
                         <tfoot>
-                          <tr className="bg-slate-50 dark:bg-slate-800 font-semibold text-sm">
-                            <td colSpan={2} className="px-3 py-2 text-slate-700 dark:text-slate-300">
+                          <tr className="font-semibold text-sm" style={{ background: 'var(--asoft)', borderTop: '1px solid var(--border)' }}>
+                            <td colSpan={2} className="px-3 py-2" style={{ color: 'var(--t)' }}>
                               Total {group.label}
                             </td>
-                            <td className="px-3 py-2 text-right text-emerald-700 dark:text-emerald-400">
+                            <td className="px-3 py-2 text-right" style={{ color: 'var(--accent)' }}>
                               S/ {fmt(amount)}
                             </td>
                           </tr>
@@ -438,15 +439,16 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
               const isEmpty = totalGastado === 0
               return (
                 <div className="col-span-2">
-                  <div className={`px-4 py-3 rounded-xl border transition ${
-                    isEmpty
-                      ? 'bg-slate-50 dark:bg-slate-800/30 border-slate-200 dark:border-slate-700 opacity-50'
+                  <div
+                    className="px-4 py-3 rounded-2xl transition"
+                    style={isEmpty
+                      ? { background: 'var(--bg2)', border: '1px solid var(--border)', opacity: 0.5 }
                       : isExpanded
-                        ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-300 dark:border-emerald-700'
-                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
-                  }`}>
+                        ? { background: 'var(--asoft)', border: '1px solid var(--accent)' }
+                        : { background: 'var(--surface)', border: '1px solid var(--border)' }}
+                  >
                     <div className="flex items-center justify-between mb-1">
-                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                      <p className="text-xs font-medium" style={{ color: 'var(--t2)' }}>
                         Gastos personales
                       </p>
                       <button
@@ -454,7 +456,8 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
                           if (showPersonal && isExpanded) setExpandedAccount(null)
                           setShowPersonal(v => !v)
                         }}
-                        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition p-0.5"
+                        className="transition p-0.5"
+                        style={{ color: 'var(--t3)' }}
                         title={showPersonal ? 'Ocultar' : 'Mostrar'}
                       >
                         {showPersonal ? (
@@ -473,11 +476,11 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
                       disabled={isEmpty || !showPersonal}
                       className="w-full text-left disabled:cursor-default"
                     >
-                      <p className={`text-base font-bold ${isEmpty ? 'text-slate-400 dark:text-slate-600' : 'text-slate-900 dark:text-slate-100'}`}>
+                      <p className="text-base font-bold" style={{ color: isEmpty ? 'var(--t3)' : 'var(--t)' }}>
                         {showPersonal ? `S/ ${fmt(totalGastado)}` : '••••••'}
                       </p>
                       {!isEmpty && (
-                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--t3)' }}>
                           {personalExpenses.length} gasto{personalExpenses.length !== 1 ? 's' : ''} {isExpanded ? '▲' : '▼'}
                         </p>
                       )}
@@ -485,36 +488,36 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
                   </div>
 
                   {isExpanded && (
-                    <div className="mt-2 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div className="mt-2 rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="bg-slate-50 dark:bg-slate-800 text-xs text-slate-500 dark:text-slate-400">
+                          <tr className="text-xs" style={{ background: 'var(--bg2)', color: 'var(--t3)' }}>
                             <th className="text-left px-3 py-2">Fecha</th>
                             <th className="text-left px-3 py-2">Descripción</th>
                             <th className="text-right px-3 py-2">Monto</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                          {personalExpenses.map(e => (
-                            <tr key={e.id} className="bg-white dark:bg-slate-900">
-                              <td className="px-3 py-2 text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                        <tbody>
+                          {personalExpenses.map((e, i) => (
+                            <tr key={e.id} style={{ background: 'var(--surface)', borderTop: i > 0 ? '1px solid var(--border)' : undefined }}>
+                              <td className="px-3 py-2 whitespace-nowrap" style={{ color: 'var(--t3)' }}>
                                 {formatDate(e.date)}
                               </td>
-                              <td className="px-3 py-2 text-slate-900 dark:text-slate-100">
+                              <td className="px-3 py-2" style={{ color: 'var(--t)' }}>
                                 {e.description}
                               </td>
-                              <td className="px-3 py-2 text-right font-medium text-slate-900 dark:text-slate-100 whitespace-nowrap">
+                              <td className="px-3 py-2 text-right font-medium whitespace-nowrap" style={{ color: 'var(--t)' }}>
                                 {showPersonal ? `S/ ${fmt(e.julio ?? 0)}` : '••••'}
                               </td>
                             </tr>
                           ))}
                         </tbody>
                         <tfoot>
-                          <tr className="bg-slate-50 dark:bg-slate-800 font-semibold text-sm">
-                            <td colSpan={2} className="px-3 py-2 text-slate-700 dark:text-slate-300">
+                          <tr className="font-semibold text-sm" style={{ background: 'var(--asoft)', borderTop: '1px solid var(--border)' }}>
+                            <td colSpan={2} className="px-3 py-2" style={{ color: 'var(--t)' }}>
                               Total Gastos personales
                             </td>
-                            <td className="px-3 py-2 text-right text-emerald-700 dark:text-emerald-400">
+                            <td className="px-3 py-2 text-right" style={{ color: 'var(--accent)' }}>
                               {showPersonal ? `S/ ${fmt(totalGastado)}` : '••••••'}
                             </td>
                           </tr>
@@ -531,11 +534,11 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
 
       {/* Historial de cortes */}
       <div>
-        <h2 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--t3)' }}>
           Historial de cortes
         </h2>
         {localCortes.length === 0 ? (
-          <p className="text-sm text-slate-400 dark:text-slate-600">Sin cortes registrados.</p>
+          <p className="text-sm" style={{ color: 'var(--t3)' }}>Sin cortes registrados.</p>
         ) : (
           <div className="space-y-2">
             {localCortes.map(corte => {
@@ -545,28 +548,29 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
               return (
                 <div
                   key={corte.id}
-                  className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden"
+                  className="rounded-2xl overflow-hidden"
+                  style={{ border: '1px solid var(--border)', background: 'var(--surface)' }}
                 >
                   <div className="flex items-center">
                     <button
                       onClick={() => openCorte(isOpen ? null : corte.id)}
-                      className="flex-1 flex items-center justify-between px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition"
+                      className="flex-1 flex items-center justify-between px-4 py-3 text-left transition"
                     >
                       <div>
-                        <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                        <span className="text-sm font-medium" style={{ color: 'var(--t)' }}>
                           {formatDate(corte.settled_date)} — {MONTH_NAMES[corte.month]} {corte.year}
                         </span>
                         {corte.notes && (
-                          <span className="ml-2 text-xs text-slate-400 dark:text-slate-500">
+                          <span className="ml-2 text-xs" style={{ color: 'var(--t3)' }}>
                             {corte.notes}
                           </span>
                         )}
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                        <span className="text-sm font-bold" style={{ color: 'var(--t)' }}>
                           S/ {fmt(corteTotal)}
                         </span>
-                        <span className="text-slate-400 dark:text-slate-500 text-xs">
+                        <span className="text-xs" style={{ color: 'var(--t3)' }}>
                           {isOpen ? '▲' : '▼'}
                         </span>
                       </div>
@@ -574,7 +578,8 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
                     <button
                       onClick={() => revertCorte(corte.id)}
                       disabled={revertingId === corte.id}
-                      className="px-3 py-3 text-xs text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition disabled:opacity-40 border-l border-slate-100 dark:border-slate-700"
+                      className="px-3 py-3 text-xs transition disabled:opacity-40"
+                      style={{ color: 'var(--red)', borderLeft: '1px solid var(--border)' }}
                       title="Revertir corte"
                     >
                       {revertingId === corte.id ? '...' : 'Revertir'}
@@ -582,15 +587,15 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
                   </div>
 
                   {isOpen && (
-                    <div className="border-t border-slate-100 dark:border-slate-700">
+                    <div style={{ borderTop: '1px solid var(--border)' }}>
                       {loadingCorteExpenses && !corteExpensesCache[corte.id] ? (
-                        <p className="px-4 py-3 text-xs text-slate-400 dark:text-slate-500">Cargando detalle...</p>
+                        <p className="px-4 py-3 text-xs" style={{ color: 'var(--t3)' }}>Cargando detalle...</p>
                       ) : (
                         <table className="w-full text-sm">
-                          <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                          <tbody>
                             {corte.corte_account_totals
                               .sort((a, b) => b.total_amount - a.total_amount)
-                              .map(t => {
+                              .map((t, tIdx) => {
                                 const group = CORTE_ACCOUNT_GROUPS.find(g => g.accountKey === t.account_key)
                                 const isAccountExpanded = expandedCorteAccount === `${corte.id}:${t.account_key}`
                                 const groupExpenses = group
@@ -599,28 +604,29 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
                                 return (
                                   <Fragment key={t.id}>
                                     <tr
-                                      className={`cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/30 transition ${isAccountExpanded ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-white dark:bg-slate-800'}`}
+                                      className="cursor-pointer transition"
+                                      style={{ background: isAccountExpanded ? 'var(--asoft)' : 'var(--surface)', borderTop: tIdx > 0 ? '1px solid var(--border)' : undefined }}
                                       onClick={() => setExpandedCorteAccount(isAccountExpanded ? null : `${corte.id}:${t.account_key}`)}
                                     >
-                                      <td className="px-4 py-2 text-slate-600 dark:text-slate-400">
+                                      <td className="px-4 py-2" style={{ color: 'var(--t2)' }}>
                                         {group?.label ?? t.account_key}
                                         {groupExpenses.length > 0 && (
-                                          <span className="ml-1.5 text-xs text-slate-400 dark:text-slate-500">
+                                          <span className="ml-1.5 text-xs" style={{ color: 'var(--t3)' }}>
                                             ({groupExpenses.length}) {isAccountExpanded ? '▲' : '▼'}
                                           </span>
                                         )}
                                       </td>
-                                      <td className="px-4 py-2 text-right font-medium text-slate-900 dark:text-slate-100">
+                                      <td className="px-4 py-2 text-right font-medium" style={{ color: 'var(--t)' }}>
                                         S/ {fmt(t.total_amount)}
                                       </td>
                                     </tr>
                                     {isAccountExpanded && groupExpenses.map(e => (
-                                      <tr key={e.id} className="bg-slate-50 dark:bg-slate-700/20">
-                                        <td className="pl-8 pr-4 py-1.5 text-xs text-slate-500 dark:text-slate-400">
-                                          <span className="text-slate-400 dark:text-slate-500 mr-2">{formatDate(e.date)}</span>
+                                      <tr key={e.id} style={{ background: 'var(--bg2)', borderTop: '1px solid var(--border)' }}>
+                                        <td className="pl-8 pr-4 py-1.5 text-xs" style={{ color: 'var(--t2)' }}>
+                                          <span className="mr-2" style={{ color: 'var(--t3)' }}>{formatDate(e.date)}</span>
                                           {e.description}
                                         </td>
-                                        <td className="px-4 py-1.5 text-right text-xs text-slate-600 dark:text-slate-400">
+                                        <td className="px-4 py-1.5 text-right text-xs" style={{ color: 'var(--t2)' }}>
                                           S/ {fmt(group ? getExpenseAmountForGroup(e, group.expenseColumns) : 0)}
                                         </td>
                                       </tr>
@@ -630,9 +636,9 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
                               })}
                           </tbody>
                           <tfoot>
-                            <tr className="bg-slate-50 dark:bg-slate-700/50 font-semibold">
-                              <td className="px-4 py-2 text-slate-700 dark:text-slate-300">Total</td>
-                              <td className="px-4 py-2 text-right text-emerald-700 dark:text-emerald-400">
+                            <tr className="font-semibold" style={{ background: 'var(--asoft)', borderTop: '1px solid var(--border)' }}>
+                              <td className="px-4 py-2" style={{ color: 'var(--t)' }}>Total</td>
+                              <td className="px-4 py-2 text-right" style={{ color: 'var(--accent)' }}>
                                 S/ {fmt(corteTotal)}
                               </td>
                             </tr>
@@ -654,44 +660,45 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm px-4 pb-6 sm:pb-0"
           onClick={e => { if (e.target === e.currentTarget && !performing) { setShowConfirmModal(false); setCorteNotes(''); resetSettledDate() } }}
         >
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md">
-            <div className="px-6 pt-6 pb-4 border-b border-slate-100 dark:border-slate-800">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">Confirmar Corte</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <div className="rounded-2xl shadow-xl w-full max-w-md" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+            <div className="px-6 pt-6 pb-4" style={{ borderBottom: '1px solid var(--border)' }}>
+              <h2 className="text-lg font-bold" style={{ color: 'var(--t)' }}>Confirmar Corte</h2>
+              <p className="text-sm mt-1" style={{ color: 'var(--t2)' }}>
                 {expensesToSettle.length} gastos · {earliestDate && formatDate(earliestDate)} — {formatDate(cutoffDate)}
               </p>
               <div className="mt-3 flex items-center gap-2">
-                <label className="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">Fecha del corte</label>
+                <label className="text-xs font-medium whitespace-nowrap" style={{ color: 'var(--t2)' }}>Fecha del corte</label>
                 <input
                   type="date"
                   value={settledDateInput}
                   onChange={e => setSettledDateInput(e.target.value)}
-                  className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="px-2.5 py-1.5 rounded-xl text-sm focus:outline-none"
+                  style={{ border: '1px solid var(--border)', background: 'var(--bg2)', color: 'var(--t)' }}
                 />
               </div>
             </div>
             <div className="px-6 py-4">
               <table className="w-full text-sm mb-4">
                 <thead>
-                  <tr className="text-xs text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800">
+                  <tr className="text-xs" style={{ borderBottom: '1px solid var(--border)', color: 'var(--t3)' }}>
                     <th className="text-left pb-2">Cuenta</th>
                     <th className="text-right pb-2">Transferir</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                  {CORTE_ACCOUNT_GROUPS.filter(g => accountTotals[g.accountKey] > 0).map(g => (
-                    <tr key={g.accountKey}>
-                      <td className="py-2 text-slate-700 dark:text-slate-300">{g.label}</td>
-                      <td className="py-2 text-right font-medium text-slate-900 dark:text-slate-100">
+                <tbody>
+                  {CORTE_ACCOUNT_GROUPS.filter(g => accountTotals[g.accountKey] > 0).map((g, i) => (
+                    <tr key={g.accountKey} style={{ borderTop: i > 0 ? '1px solid var(--border)' : undefined }}>
+                      <td className="py-2" style={{ color: 'var(--t2)' }}>{g.label}</td>
+                      <td className="py-2 text-right font-medium" style={{ color: 'var(--t)' }}>
                         S/ {fmt(accountTotals[g.accountKey])}
                       </td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr className="border-t border-slate-200 dark:border-slate-700 font-bold">
-                    <td className="pt-2 text-slate-900 dark:text-slate-100">TOTAL</td>
-                    <td className="pt-2 text-right text-emerald-700 dark:text-emerald-400">
+                  <tr className="font-bold" style={{ borderTop: '1px solid var(--border)' }}>
+                    <td className="pt-2" style={{ color: 'var(--t)' }}>TOTAL</td>
+                    <td className="pt-2 text-right" style={{ color: 'var(--accent)' }}>
                       S/ {fmt(totalAmount)}
                     </td>
                   </tr>
@@ -699,7 +706,7 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
               </table>
 
               <div className="mb-4">
-                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
+                <label className="block text-xs font-medium mb-1" style={{ color: 'var(--t2)' }}>
                   Nota (opcional)
                 </label>
                 <input
@@ -707,7 +714,8 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
                   value={corteNotes}
                   onChange={e => setCorteNotes(e.target.value)}
                   placeholder="ej. Corte mid-mes Abril"
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 rounded-xl text-sm focus:outline-none"
+                  style={{ border: '1px solid var(--border)', background: 'var(--bg2)', color: 'var(--t)' }}
                 />
               </div>
 
@@ -715,14 +723,16 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
                 <button
                   onClick={() => { setShowConfirmModal(false); setCorteNotes(''); resetSettledDate() }}
                   disabled={performing}
-                  className="flex-1 px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+                  className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium transition"
+                  style={{ border: '1px solid var(--border)', color: 'var(--t2)' }}
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={realizarCorte}
                   disabled={performing}
-                  className="flex-1 px-4 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-60 transition"
+                  className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium disabled:opacity-60 transition"
+                  style={{ background: 'var(--accent)', color: 'white' }}
                 >
                   {performing ? 'Guardando...' : 'Confirmar Corte'}
                 </button>

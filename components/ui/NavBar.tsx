@@ -4,15 +4,14 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
-import { useTheme } from './ThemeProvider'
 
 const TABS = [
   {
     href: '/resumen',
     label: 'Resumen',
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="18" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="2" y="13" width="4" height="8"/>
+      <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+        <rect x="18" y="3" width="4" height="18" rx="1"/><rect x="10" y="8" width="4" height="13" rx="1"/><rect x="2" y="13" width="4" height="8" rx="1"/>
       </svg>
     ),
   },
@@ -20,8 +19,8 @@ const TABS = [
     href: '/gastos',
     label: 'Gastos',
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8H8"/><path d="M16 12H8"/><path d="M12 16H8"/>
+      <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+        <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8H8M16 12H8M12 16H8"/>
       </svg>
     ),
   },
@@ -29,8 +28,9 @@ const TABS = [
     href: '/corte',
     label: 'Corte',
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/>
+      <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+        <circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/>
+        <line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/>
       </svg>
     ),
   },
@@ -38,7 +38,7 @@ const TABS = [
     href: '/cuentas',
     label: 'Cuentas',
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
         <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
       </svg>
     ),
@@ -47,101 +47,145 @@ const TABS = [
     href: '/power',
     label: 'Power',
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
         <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+      </svg>
+    ),
+  },
+  {
+    href: '/ajustes',
+    label: 'Ajustes',
+    icon: (
+      <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
       </svg>
     ),
   },
 ]
 
-export default function NavBar({ user: _ }: { user: User }) {
+export default function NavBar({ user }: { user: User }) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
-  const { isDark, setTheme, theme } = useTheme()
+
+  const userName = user?.user_metadata?.full_name ?? user?.email?.split('@')[0] ?? 'Usuario'
+  const initials = userName.charAt(0).toUpperCase()
 
   async function signOut() {
     await supabase.auth.signOut()
     router.push('/login')
   }
 
-  function toggleTheme() {
-    if (isDark) {
-      setTheme('light')
-    } else {
-      setTheme(theme === 'light' ? 'system' : 'dark')
-    }
-  }
-
   return (
     <>
-      {/* Top header */}
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-20">
-        <div className="max-w-5xl mx-auto px-4 flex items-center justify-between h-14">
-          <span className="font-bold text-slate-800 dark:text-slate-200 text-sm">Julio & Flor</span>
+      {/* ── Sidebar: desktop only ─────────────────────────────── */}
+      <aside
+        className="hidden md:flex flex-col"
+        style={{
+          background: 'var(--surface)',
+          borderRight: '1px solid var(--border)',
+          height: '100%',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Logo */}
+        <div style={{ padding: '24px 20px 16px' }}>
+          <div className="flex items-center gap-2.5">
+            <div
+              className="flex items-center justify-center w-8 h-8 rounded-xl text-white text-sm font-bold flex-shrink-0"
+              style={{ background: 'var(--accent)' }}
+            >
+              F
+            </div>
+            <div>
+              <p className="text-sm font-bold leading-tight" style={{ color: 'var(--t)' }}>Flor &amp; Julio</p>
+              <p className="text-xs" style={{ color: 'var(--t3)' }}>Gastos 2026</p>
+            </div>
+          </div>
+        </div>
 
-          {/* Desktop nav */}
-          <nav className="hidden sm:flex gap-1">
-            {TABS.map(tab => (
+        {/* Nav items */}
+        <nav style={{ padding: '0 12px', flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {TABS.map(tab => {
+            const active = pathname.startsWith(tab.href)
+            return (
               <Link
                 key={tab.href}
                 href={tab.href}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
-                  pathname.startsWith(tab.href)
-                    ? 'bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors"
+                style={
+                  active
+                    ? { background: 'var(--asoft)', color: 'var(--atext)' }
+                    : { color: 'var(--t2)' }
+                }
               >
+                <span style={{ color: active ? 'var(--accent)' : 'var(--t3)', flexShrink: 0 }}>
+                  {tab.icon}
+                </span>
                 {tab.label}
               </Link>
-            ))}
-          </nav>
+            )
+          })}
+        </nav>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={toggleTheme}
-              className="p-1.5 rounded-md text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-              title={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-              aria-label={isDark ? 'Modo claro' : 'Modo oscuro'}
-            >
-              {isDark ? (
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="5"/>
-                  <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-                  <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-                </svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-                </svg>
-              )}
-            </button>
+        {/* User footer */}
+        <div
+          className="flex items-center gap-2.5"
+          style={{ padding: '16px 20px', borderTop: '1px solid var(--border)' }}
+        >
+          <div
+            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+            style={{ background: 'var(--accent)' }}
+          >
+            {initials}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate" style={{ color: 'var(--t)' }}>{userName}</p>
             <button
               onClick={signOut}
-              className="hidden sm:block text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition"
+              className="text-xs transition-opacity hover:opacity-60"
+              style={{ color: 'var(--t3)' }}
             >
-              Salir
+              Cerrar sesión
             </button>
           </div>
         </div>
-      </header>
+      </aside>
 
-      {/* Mobile bottom nav */}
-      <nav className="sm:hidden fixed bottom-0 inset-x-0 z-20 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-stretch" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      {/* ── Bottom nav: mobile only ───────────────────────────── */}
+      <nav
+        className="md:hidden fixed bottom-0 inset-x-0 z-40 flex"
+        style={{
+          background: 'var(--surface)',
+          borderTop: '1px solid var(--border)',
+          paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
+        }}
+      >
         {TABS.map(tab => {
           const active = pathname.startsWith(tab.href)
           return (
             <Link
               key={tab.href}
               href={tab.href}
-              className={`flex-1 flex flex-col items-center justify-center py-3 transition relative ${
-                active ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'
-              }`}
+              className="flex-1 flex flex-col items-center justify-center py-3 gap-0.5 relative"
+              style={{ color: active ? 'var(--accent)' : 'var(--t3)' }}
             >
-              {active && <span className="absolute top-0 inset-x-3 h-0.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />}
+              {active && (
+                <span
+                  className="absolute top-0"
+                  style={{
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: 32,
+                    height: 3,
+                    borderRadius: '0 0 2px 2px',
+                    background: 'var(--accent)',
+                  }}
+                />
+              )}
               {tab.icon}
+              <span style={{ fontSize: 10, fontWeight: 500 }}>{tab.label}</span>
             </Link>
           )
         })}

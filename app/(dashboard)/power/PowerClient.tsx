@@ -179,7 +179,7 @@ export default function PowerClient({ initialEntries }: Props) {
         <p className="font-semibold text-slate-700 dark:text-slate-300">{d.label as string}</p>
         <p className="text-slate-800 dark:text-slate-200">{fmt(value)}</p>
         {delta !== 0 && (
-          <p className={delta > 0 ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-red-500 dark:text-red-400 font-semibold'}>
+          <p className={delta > 0 ? 'text-accent font-semibold' : 'text-red-500 dark:text-red-400 font-semibold'}>
             {delta > 0 ? '+' : ''}{fmt(delta)}
           </p>
         )}
@@ -191,7 +191,7 @@ export default function PowerClient({ initialEntries }: Props) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">Cuenta Power</h1>
-        <button onClick={() => setShowForm(true)} className="bg-emerald-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-emerald-700 transition">
+        <button onClick={() => setShowForm(true)} className="btn-primary text-sm px-4 py-2 rounded-lg transition">
           + Nueva entrada
         </button>
       </div>
@@ -205,7 +205,7 @@ export default function PowerClient({ initialEntries }: Props) {
           {POWER_COLS.map(col => (
             <div key={col.key} className="p-3 border-b sm:border-b-0 sm:border-r border-slate-100 dark:border-slate-700 last:border-0">
               <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{col.label}</p>
-              <p className={`text-sm font-bold mt-0.5 ${(totals[col.key] ?? 0) >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+              <p className={`text-sm font-bold mt-0.5 ${(totals[col.key] ?? 0) >= 0 ? 'text-atext' : 'text-red-600 dark:text-red-400'}`}>
                 S/ {(totals[col.key] ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
               </p>
             </div>
@@ -233,14 +233,14 @@ export default function PowerClient({ initialEntries }: Props) {
               <XAxis dataKey="label" tick={{ fontSize: 9 }} />
               <YAxis tick={{ fontSize: 10 }} />
               <Tooltip content={<ChartTooltip />} />
-              <Line type="monotone" dataKey={chartCol} stroke="#059669" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey={chartCol} stroke="var(--accent)" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
       )}
 
       {/* Full history table */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-x-auto">
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700" style={{ overflow: 'clip' }}>
         <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3 flex-wrap">
             <h2 className="font-semibold text-slate-800 dark:text-slate-200 text-sm">Historial — {filteredEntries.length} entradas</h2>
@@ -261,7 +261,7 @@ export default function PowerClient({ initialEntries }: Props) {
             />
             <button
               onClick={() => { setSelectMode(m => !m); setSelectedIds(new Set()) }}
-              className={`text-xs px-3 py-1 rounded-lg border transition ${selectMode ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-400 text-emerald-700 dark:text-emerald-400' : 'border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+              className={`text-xs px-3 py-1 rounded-lg border transition ${selectMode ? 'bg-asoft border-accent text-atext' : 'border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
             >
               {selectMode ? 'Cancelar selección' : 'Seleccionar'}
             </button>
@@ -278,20 +278,20 @@ export default function PowerClient({ initialEntries }: Props) {
               </button>
             )}
           </div>
-          <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400">
+          <span className="text-sm font-bold text-atext">
             Total general (todo el historial): S/ {Object.values(totals).reduce((s, v) => s + v, 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
           </span>
         </div>
-        <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
-          <table className="text-xs min-w-max w-full">
+        <div className="overflow-x-auto touch-pan-x md:max-h-[60vh] md:overflow-y-auto">
+          <table className="text-xs min-w-max w-full power-table">
             <thead className="sticky top-0 z-10">
               <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700">
                 {selectMode && (
                   <th className="px-3 py-2 sticky left-0 z-20 bg-slate-50 dark:bg-slate-900 w-10 min-w-[40px]">
-                    <button onClick={toggleSelectAll} className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition ${selectedIds.size === filteredEntries.length && filteredEntries.length > 0 ? 'bg-emerald-600 border-emerald-600' : 'border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700'}`}>
+                    <button onClick={toggleSelectAll} className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition ${selectedIds.size === filteredEntries.length && filteredEntries.length > 0 ? 'bg-accent border-accent' : 'border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700'}`}>
                       {selectedIds.size === filteredEntries.length && filteredEntries.length > 0
                         ? <svg className="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
-                        : selectedIds.size > 0 ? <span className="w-2.5 h-0.5 bg-emerald-500 rounded"/> : null}
+                        : selectedIds.size > 0 ? <span className="w-2.5 h-0.5 bg-accent rounded"/> : null}
                     </button>
                   </th>
                 )}
@@ -301,7 +301,7 @@ export default function PowerClient({ initialEntries }: Props) {
                 {POWER_COLS.map(c => (
                   <th key={c.key} className="text-right px-3 py-2 font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">{c.label}</th>
                 ))}
-                <th className="text-right px-3 py-2 font-medium text-emerald-600 dark:text-emerald-400 whitespace-nowrap">Total fila</th>
+                <th className="text-right px-3 py-2 font-medium text-accent whitespace-nowrap">Total fila</th>
                 <th className="px-3 py-2"></th>
               </tr>
             </thead>
@@ -312,13 +312,13 @@ export default function PowerClient({ initialEntries }: Props) {
                 return (
                   <tr
                     key={e.id}
-                    className={`border-b border-slate-50 dark:border-slate-700/50 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-700/50 ${isSelected ? 'bg-emerald-50 dark:bg-emerald-900/20' : ''}`}
+                    className={`border-b border-slate-50 dark:border-slate-700/50 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-700/50 ${isSelected ? 'bg-col-current' : ''}`}
                     onClick={selectMode ? () => toggleSelect(e.id) : undefined}
                     style={selectMode ? { cursor: 'pointer' } : undefined}
                   >
                     {selectMode && (
                       <td className="px-3 py-2 sticky left-0 z-10 bg-inherit w-10 min-w-[40px]">
-                        <span className={`w-6 h-6 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition ${isSelected ? 'bg-emerald-600 border-emerald-600' : 'border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700'}`}>
+                        <span className={`w-6 h-6 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition ${isSelected ? 'bg-accent border-accent' : 'border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700'}`}>
                           {isSelected && <svg className="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
                         </span>
                       </td>
@@ -334,7 +334,7 @@ export default function PowerClient({ initialEntries }: Props) {
                         </td>
                       )
                     })}
-                    <td className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${rowTotal >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                    <td className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${rowTotal >= 0 ? 'text-atext' : 'text-red-600 dark:text-red-400'}`}>
                       S/ {rowTotal.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                     </td>
                     <td className="px-3 py-2 text-center">
@@ -349,16 +349,16 @@ export default function PowerClient({ initialEntries }: Props) {
               })}
             </tbody>
             <tfoot className="sticky bottom-0 z-10">
-              <tr className="bg-emerald-50 dark:bg-emerald-950 border-t-2 border-emerald-200 dark:border-emerald-700 font-bold">
-                <td className="px-3 py-2 text-emerald-800 dark:text-emerald-300 sticky left-0 z-10 bg-emerald-50 dark:bg-emerald-950 w-12 min-w-[48px]">TOT.</td>
-                <td className="px-3 py-2 sticky left-12 z-10 bg-emerald-50 dark:bg-emerald-950 w-24 min-w-[96px]"></td>
-                <td className="px-3 py-2 sticky left-36 z-10 bg-emerald-50 dark:bg-emerald-950 w-32 min-w-[128px] border-r border-emerald-200 dark:border-emerald-700"></td>
+              <tr className="bg-asoft border-t-2 border-accent font-bold">
+                <td className="px-3 py-2 text-atext sticky left-0 z-10 bg-asoft w-12 min-w-[48px]">TOT.</td>
+                <td className="px-3 py-2 sticky left-12 z-10 bg-asoft w-24 min-w-[96px]"></td>
+                <td className="px-3 py-2 sticky left-36 z-10 bg-asoft w-32 min-w-[128px] border-r border-accent"></td>
                 {POWER_COLS.map(c => (
-                  <td key={c.key} className={`px-3 py-2 text-right whitespace-nowrap ${(totals[c.key] ?? 0) >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                  <td key={c.key} className={`px-3 py-2 text-right whitespace-nowrap ${(totals[c.key] ?? 0) >= 0 ? 'text-atext' : 'text-red-600 dark:text-red-400'}`}>
                     S/ {(totals[c.key] ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                   </td>
                 ))}
-                <td className="px-3 py-2 text-right text-emerald-800 dark:text-emerald-300 whitespace-nowrap">
+                <td className="px-3 py-2 text-right text-atext whitespace-nowrap">
                   S/ {Object.values(totals).reduce((s, v) => s + v, 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                 </td>
                 <td className="px-3 py-2"></td>
@@ -444,10 +444,10 @@ export default function PowerClient({ initialEntries }: Props) {
             </div>
             <div className="px-5 py-4 border-t border-slate-100 dark:border-slate-700 flex gap-2 justify-end">
               <button onClick={() => setShowForm(false)} className="text-sm text-slate-500 dark:text-slate-400 px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">Cancelar</button>
-              <button onClick={() => save(true)} disabled={saving} className="border border-emerald-600 dark:border-emerald-500 text-emerald-600 dark:text-emerald-400 text-sm px-4 py-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/30 disabled:opacity-50 transition">
+              <button onClick={() => save(true)} disabled={saving} className="border border-accent text-accent text-sm px-4 py-2 rounded-lg hover:bg-asoft disabled:opacity-50 transition">
                 {saving ? '...' : 'Guardar y agregar otra'}
               </button>
-              <button onClick={() => save(false)} disabled={saving} className="bg-emerald-600 text-white text-sm px-5 py-2 rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition">
+              <button onClick={() => save(false)} disabled={saving} className="btn-primary text-sm px-5 py-2 rounded-lg disabled:opacity-50 transition">
                 {saving ? 'Guardando...' : 'Guardar'}
               </button>
             </div>

@@ -3,22 +3,44 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 
 type Theme = 'system' | 'light' | 'dark'
+export type ColorTheme = 'durazno' | 'menta' | 'lavanda' | 'cielo' | 'rosa'
+
+export const COLOR_THEMES: { id: ColorTheme; label: string; swatch: string }[] = [
+  { id: 'durazno', label: 'Durazno', swatch: 'oklch(62% 0.14 50)' },
+  { id: 'menta',   label: 'Menta',   swatch: 'oklch(56% 0.13 160)' },
+  { id: 'lavanda', label: 'Lavanda', swatch: 'oklch(58% 0.14 290)' },
+  { id: 'cielo',   label: 'Cielo',   swatch: 'oklch(57% 0.13 225)' },
+  { id: 'rosa',    label: 'Rosa',    swatch: 'oklch(60% 0.14 345)' },
+]
 
 const ThemeContext = createContext<{
   theme: Theme
   isDark: boolean
   setTheme: (t: Theme) => void
-}>({ theme: 'system', isDark: false, setTheme: () => {} })
+  colorTheme: ColorTheme
+  setColorTheme: (c: ColorTheme) => void
+}>({
+  theme: 'system',
+  isDark: false,
+  setTheme: () => {},
+  colorTheme: 'durazno',
+  setColorTheme: () => {},
+})
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>('system')
   const [isDark, setIsDark] = useState(false)
+  const [colorTheme, setColorThemeState] = useState<ColorTheme>('durazno')
 
   useEffect(() => {
     const saved = localStorage.getItem('theme') as Theme | null
     const initial = saved ?? 'system'
     setThemeState(initial)
     applyTheme(initial)
+
+    const savedColor = (localStorage.getItem('gfj-theme') as ColorTheme | null) ?? 'durazno'
+    setColorThemeState(savedColor)
+    document.documentElement.setAttribute('data-theme', savedColor)
   }, [])
 
   useEffect(() => {
@@ -53,8 +75,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     applyTheme(t)
   }
 
+  function setColorTheme(c: ColorTheme) {
+    setColorThemeState(c)
+    localStorage.setItem('gfj-theme', c)
+    document.documentElement.setAttribute('data-theme', c)
+  }
+
   return (
-    <ThemeContext.Provider value={{ theme, isDark, setTheme }}>
+    <ThemeContext.Provider value={{ theme, isDark, setTheme, colorTheme, setColorTheme }}>
       {children}
     </ThemeContext.Provider>
   )

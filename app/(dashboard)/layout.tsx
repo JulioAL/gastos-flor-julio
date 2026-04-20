@@ -8,17 +8,30 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!user) redirect('/login')
 
+  const isDev = process.env.NEXT_PUBLIC_ENV !== 'production'
+
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col">
-      {process.env.NEXT_PUBLIC_ENV !== 'production' && (
-        <div className="bg-amber-400 text-amber-900 text-xs font-bold text-center py-1 tracking-widest uppercase">
+    <div style={{ background: 'var(--bg)', color: 'var(--t)', display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+      {isDev && (
+        <div className="bg-amber-400 text-amber-900 text-xs font-bold text-center py-1 tracking-widest uppercase flex-shrink-0">
           DEV — base de datos de prueba
         </div>
       )}
-      <NavBar user={user} />
-      <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-6 pb-24 sm:pb-6">
-        {children}
-      </main>
+      <div className="app-shell" style={{ flex: 1, minHeight: 0 }}>
+        <NavBar user={user} />
+        <main
+          style={{
+            flex: 1,
+            background: 'var(--bg)',
+            overflowY: 'auto',
+            height: '100%',
+          }}
+        >
+          <div style={{ paddingTop: 24, paddingBottom: 100, paddingLeft: 32, paddingRight: 32, maxWidth: 720 }}>
+            {children}
+          </div>
+        </main>
+      </div>
     </div>
   )
 }

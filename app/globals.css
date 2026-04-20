@@ -2,27 +2,180 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-:root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+/* ── Color themes (oklch palette) ────────────────────────────── */
+:root,
+[data-theme="durazno"] {
+  --bg:     oklch(97% 0.02 65);
+  --bg2:    oklch(93.5% 0.025 65);
+  --surface:oklch(99.5% 0.008 65);
+  --border: oklch(89% 0.025 65);
+  --accent: oklch(62% 0.14 50);
+  --asoft:  oklch(94% 0.04 60);
+  --atext:  oklch(42% 0.10 50);
+  --t:      oklch(18% 0.02 60);
+  --t2:     oklch(48% 0.02 60);
+  --t3:     oklch(66% 0.015 60);
+  --red:    oklch(58% 0.18 25);
+  --amber:  oklch(70% 0.14 75);
+}
+[data-theme="menta"] {
+  --bg:     oklch(96.5% 0.02 155);
+  --bg2:    oklch(93% 0.025 155);
+  --surface:oklch(99.5% 0.008 155);
+  --border: oklch(88% 0.025 155);
+  --accent: oklch(56% 0.13 160);
+  --asoft:  oklch(93% 0.04 155);
+  --atext:  oklch(38% 0.10 160);
+  --t:      oklch(17% 0.02 155);
+  --t2:     oklch(46% 0.02 155);
+  --t3:     oklch(64% 0.015 155);
+  --red:    oklch(58% 0.18 25);
+  --amber:  oklch(70% 0.14 75);
+}
+[data-theme="lavanda"] {
+  --bg:     oklch(96.5% 0.02 290);
+  --bg2:    oklch(93% 0.025 290);
+  --surface:oklch(99.5% 0.008 290);
+  --border: oklch(88% 0.025 290);
+  --accent: oklch(58% 0.14 290);
+  --asoft:  oklch(93% 0.045 290);
+  --atext:  oklch(40% 0.11 290);
+  --t:      oklch(18% 0.02 290);
+  --t2:     oklch(47% 0.02 290);
+  --t3:     oklch(65% 0.015 290);
+  --red:    oklch(58% 0.18 25);
+  --amber:  oklch(70% 0.14 75);
+}
+[data-theme="cielo"] {
+  --bg:     oklch(96.5% 0.018 225);
+  --bg2:    oklch(93% 0.022 225);
+  --surface:oklch(99.5% 0.008 225);
+  --border: oklch(88% 0.022 225);
+  --accent: oklch(57% 0.13 225);
+  --asoft:  oklch(93% 0.04 225);
+  --atext:  oklch(38% 0.10 225);
+  --t:      oklch(18% 0.02 225);
+  --t2:     oklch(47% 0.02 225);
+  --t3:     oklch(65% 0.015 225);
+  --red:    oklch(58% 0.18 25);
+  --amber:  oklch(70% 0.14 75);
+}
+[data-theme="rosa"] {
+  --bg:     oklch(97% 0.02 345);
+  --bg2:    oklch(94% 0.025 345);
+  --surface:oklch(99.5% 0.008 345);
+  --border: oklch(89% 0.025 345);
+  --accent: oklch(60% 0.14 345);
+  --asoft:  oklch(94% 0.04 345);
+  --atext:  oklch(40% 0.11 345);
+  --t:      oklch(18% 0.02 345);
+  --t2:     oklch(47% 0.02 345);
+  --t3:     oklch(65% 0.015 345);
+  --red:    oklch(58% 0.18 25);
+  --amber:  oklch(70% 0.14 75);
 }
 
+/* Dark mode — fondos y texto iguales para todos los temas */
 .dark {
-  --background: #020617;
-  --foreground: #f1f5f9;
+  --bg:     #0f172a;
+  --bg2:    #1e293b;
+  --surface:#1e293b;
+  --border: #334155;
+  --t:      #f1f5f9;
+  --t2:     #94a3b8;
+  --t3:     #64748b;
+  --red:    #ef4444;
+  --amber:  #f59e0b;
+  /* acento por defecto: durazno */
+  --accent: oklch(68% 0.16 50);
+  --asoft:  oklch(22% 0.07 50);
+  --atext:  oklch(78% 0.12 50);
+}
+.dark[data-theme="menta"] {
+  --accent: oklch(64% 0.15 160);
+  --asoft:  oklch(20% 0.07 160);
+  --atext:  oklch(76% 0.12 160);
+}
+.dark[data-theme="lavanda"] {
+  --accent: oklch(70% 0.17 290);
+  --asoft:  oklch(23% 0.08 290);
+  --atext:  oklch(80% 0.13 290);
+}
+.dark[data-theme="cielo"] {
+  --accent: oklch(67% 0.16 225);
+  --asoft:  oklch(21% 0.07 225);
+  --atext:  oklch(78% 0.12 225);
+}
+.dark[data-theme="rosa"] {
+  --accent: oklch(68% 0.17 345);
+  --asoft:  oklch(23% 0.08 345);
+  --atext:  oklch(78% 0.13 345);
+}
+
+/* Legacy aliases */
+:root {
+  --background: var(--bg);
+  --foreground: var(--t);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-dm-sans);
+  --font-mono: var(--font-dm-mono);
 }
 
+html, body { height: 100%; overflow: hidden; }
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--t);
+  font-family: var(--font-dm-sans, 'DM Sans', system-ui, sans-serif);
+}
+
+/* ── App shell (sidebar + content) ───────────────────────────── */
+.app-shell {
+  display: block;
+  height: 100%;
+}
+@media (min-width: 768px) {
+  .app-shell {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    height: 100%;
+  }
+}
+
+/* ── Sheet / modal animations ────────────────────────────────── */
+@keyframes sheetFadeIn  { from { opacity: 0 } to { opacity: 1 } }
+@keyframes sheetSlideUp { from { transform: translateY(20px); opacity: .6 } to { transform: translateY(0); opacity: 1 } }
+.keypad-key:active { transform: scale(.94); background: var(--asoft) !important; }
+
+/* ── Utility ─────────────────────────────────────────────────── */
+.no-scroll::-webkit-scrollbar { display: none; }
+.no-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ── Theme-aware utility aliases ─────────────────────── */
+.text-accent  { color: var(--accent) }
+.text-atext   { color: var(--atext) }
+.border-accent { border-color: var(--accent) }
+.bg-asoft     { background-color: var(--asoft) }
+.bg-accent    { background-color: var(--accent) }
+.hover\:text-accent:hover { color: var(--accent) }
+.bg-col-current { background-color: color-mix(in oklch, var(--asoft) 55%, transparent) }
+.btn-primary  { background-color: var(--accent); color: white }
+.btn-primary:hover:not(:disabled) { filter: brightness(0.88) }
+.btn-primary:disabled { opacity: 0.55; cursor: not-allowed }
+
+/* Horizontal touch scroll — pan-x on mobile, auto on desktop (allows vertical scroll too) */
+.touch-pan-x { touch-action: pan-x; }
+@media (min-width: 768px) { .touch-pan-x { touch-action: auto; } }
+
+/* Power table: disable position:sticky on mobile so sticky cells don't
+   reference main (overflow-y:auto scroll container) instead of inner div */
+@media (max-width: 767px) {
+  .power-table th,
+  .power-table td { position: static !important; }
 }
 
 /* Sticky first column for scrollable budget tables */
@@ -31,46 +184,31 @@ body {
   position: sticky;
   left: 0;
   z-index: 10;
-  background-color: #ffffff;
-}
-.dark .table-scroll thead tr th:first-child,
-.dark .table-scroll tbody tr td:first-child {
-  background-color: #0f172a; /* slate-900 */
+  background-color: var(--surface);
 }
 .table-scroll tbody tr:hover td:first-child {
-  background-color: #f8fafc; /* slate-50 */
-}
-.dark .table-scroll tbody tr:hover td:first-child {
-  background-color: #1e293b; /* slate-800 */
+  background-color: var(--bg2);
 }
 
 @layer base {
   input,
   textarea,
   select {
-    color: #111827 !important;
-    background-color: #ffffff !important;
-    color-scheme: light !important;
+    font-family: inherit;
+    color: var(--t);
+    background-color: var(--surface);
   }
-
   input::placeholder,
   textarea::placeholder {
-    color: #6b7280 !important;
-    opacity: 1 !important;
+    color: var(--t3);
+    opacity: 1;
   }
 
+  /* dark mode compat for existing screens that still use Tailwind dark: classes */
   .dark input,
   .dark textarea,
   .dark select {
-    color: #e2e8f0 !important;
-    background-color: #1e293b !important;
-    color-scheme: dark !important;
-    border-color: #334155 !important;
-  }
-
-  .dark input::placeholder,
-  .dark textarea::placeholder {
-    color: #9ca3af !important;
-    opacity: 1 !important;
+    color-scheme: dark;
+    border-color: var(--border);
   }
 }
