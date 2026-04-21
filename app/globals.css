@@ -195,7 +195,7 @@ body {
   textarea,
   select {
     font-family: inherit;
-    font-size: 16px; /* prevents iOS zoom on focus */
+    font-size: 16px !important; /* prevents iOS zoom on focus — overrides text-sm */
     color: var(--t);
     background-color: var(--surface);
   }
