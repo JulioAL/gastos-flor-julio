@@ -6,17 +6,30 @@ import { MONTH_NAMES, ACCOUNTS } from '@/lib/utils/accounts'
 import type { BudgetMonth, BudgetExpense } from '@/lib/supabase/types'
 
 const DIST_COLS = [
-  { key: 'julio',           label: 'JULIO' },
-  { key: 'flor',            label: 'FLOR' },
-  { key: 'casita',          label: 'CASITA' },
-  { key: 'power',           label: 'POWER' },
-  { key: 'limpieza',        label: 'LIMPIEZA' },
-  { key: 'regalos',         label: 'REGALOS' },
-  { key: 'flor_y_julio',    label: 'FLOR Y JULIO' },
-  { key: 'navidad',         label: 'NAVIDAD' },
-  { key: 'gasolina',        label: 'GASOLINA' },
-  { key: 'entretenimiento', label: 'ENTRETENIMIENTO' },
+  { key: 'julio',           label: 'Julio' },
+  { key: 'flor',            label: 'Flor' },
+  { key: 'casita',          label: 'Casita' },
+  { key: 'power',           label: 'Power' },
+  { key: 'limpieza',        label: 'Limpieza' },
+  { key: 'regalos',         label: 'Regalos' },
+  { key: 'flor_y_julio',    label: 'Flor y Julio' },
+  { key: 'navidad',         label: 'Navidad' },
+  { key: 'gasolina',        label: 'Gasolina' },
+  { key: 'entretenimiento', label: 'Entretenimiento' },
 ] as const
+
+const DIST_COL_COLORS: Record<string, string> = {
+  julio:           'oklch(60% 0.14 345)',
+  flor:            'oklch(60% 0.14 60)',
+  casita:          'oklch(60% 0.14 155)',
+  power:           'oklch(60% 0.14 230)',
+  limpieza:        'oklch(60% 0.14 290)',
+  regalos:         'oklch(60% 0.14 20)',
+  flor_y_julio:    'oklch(60% 0.14 35)',
+  navidad:         'oklch(60% 0.14 200)',
+  gasolina:        'oklch(60% 0.14 100)',
+  entretenimiento: 'oklch(60% 0.14 320)',
+}
 
 type DistColKey = typeof DIST_COLS[number]['key']
 
@@ -253,8 +266,15 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
   const [editDistCellValue, setEditDistCellValue] = useState('')
   const [applying, setApplying] = useState(false)
   const [applyResult, setApplyResult] = useState<'success' | 'error' | null>(null)
+  const [reverting, setReverting] = useState(false)
+  const [revertResult, setRevertResult] = useState<'success' | 'error' | null>(null)
   const [copying, setCopying] = useState(false)
   const [copyResult, setCopyResult] = useState<'success' | 'error' | null>(null)
+  const [view, setView] = useState<'cuenta' | 'data' | 'dist'>('cuenta')
+  const [incomeOpen, setIncomeOpen] = useState(true)
+  const [gastosOpen, setGastosOpen] = useState(true)
+  const [deudasOpen, setDeudasOpen] = useState(true)
+  const [openDestinos, setOpenDestinos] = useState<Set<string>>(new Set())
 
   async function commitDistCell(rowId: string, field: string, value: string) {
     setEditingDistCell(null)
@@ -632,11 +652,19 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const expClient = supabase.from('budget_expenses') as any
       for (const { accountKey, amount } of cuentasMap) {
-        const existing = expenses.find(e => e.account === accountKey && e.category === accountKey)
-        if (existing) {
-          await expClient.update({ amount: (existing.amount ?? 0) + amount }).eq('id', existing.id)
+        // a) Add to main balance (category === accountKey, the editable amount)
+        const mainRow = expenses.find(e => e.account === accountKey && e.category === accountKey)
+        if (mainRow) {
+          await expClient.update({ amount: (mainRow.amount ?? 0) + amount }).eq('id', mainRow.id)
         } else {
           await expClient.insert({ budget_month_id: selectedMonthId, category: accountKey, account: accountKey, amount })
+        }
+        // b) Track applied amount separately for the read-only badge (category === 'dist_applied')
+        const appliedRow = expenses.find(e => e.account === accountKey && e.category === 'dist_applied')
+        if (appliedRow) {
+          await expClient.update({ amount: (appliedRow.amount ?? 0) + amount }).eq('id', appliedRow.id)
+        } else {
+          await expClient.insert({ budget_month_id: selectedMonthId, category: 'dist_applied', account: accountKey, amount })
         }
       }
       // Reload expenses so the cuentas section updates
@@ -666,6 +694,39 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
       setApplyResult('error')
     }
     setApplying(false)
+  }
+
+  async function revertReparticion() {
+    setReverting(true)
+    setRevertResult(null)
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const expClient = supabase.from('budget_expenses') as any
+      const appliedRows = expenses.filter(e => e.category === 'dist_applied' && e.account)
+      for (const appliedRow of appliedRows) {
+        const appliedAmount = appliedRow.amount ?? 0
+        // Subtract from main balance
+        const mainRow = expenses.find(e => e.account === appliedRow.account && e.category === appliedRow.account)
+        if (mainRow) {
+          const newAmount = (mainRow.amount ?? 0) - appliedAmount
+          if (newAmount <= 0) {
+            await expClient.delete().eq('id', mainRow.id)
+          } else {
+            await expClient.update({ amount: newAmount }).eq('id', mainRow.id)
+          }
+        }
+        // Delete the dist_applied tracking row
+        await expClient.delete().eq('id', appliedRow.id)
+      }
+      // Reload
+      const { data: refreshed } = await (supabase.from('budget_expenses') as any)
+        .select('*').eq('budget_month_id', selectedMonthId)
+      if (refreshed) setExpenses(refreshed)
+      setRevertResult('success')
+    } catch {
+      setRevertResult('error')
+    }
+    setReverting(false)
   }
 
   async function copyFromPreviousMonth() {
@@ -802,21 +863,45 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
     return null
   }
 
-  // Group expenses by account — direct row (category === account key) takes precedence over sum
+  // Group expenses by account — direct row (category === account key) is the manually editable amount
   const byAccount: Record<string, number> = {}
   for (const acc of ACCOUNTS) {
     const direct = expenses.find(e => e.account === acc.key && e.category === acc.key)
     byAccount[acc.key] = direct
       ? (direct.amount ?? 0)
-      : expenses.filter(e => e.account === acc.key && e.category !== acc.key).reduce((s, e) => s + (e.amount ?? 0), 0)
+      : expenses.filter(e => e.account === acc.key && e.category !== acc.key && e.category !== 'dist_applied').reduce((s, e) => s + (e.amount ?? 0), 0)
   }
 
+  // Amount accumulated from "Aplicar a Cuentas y Power" (read-only badge)
+  const appliedByAccount: Record<string, number> = {}
+  for (const acc of ACCOUNTS) {
+    const row = expenses.find(e => e.account === acc.key && e.category === 'dist_applied')
+    appliedByAccount[acc.key] = row?.amount ?? 0
+  }
+
+  const fmt = (n: number) => `S/ ${n.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`
+  const fmtAmt = (n: number) => n % 1 === 0
+    ? n.toLocaleString('es-PE')
+    : n.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const selMonth = months.find(m => m.id === selectedMonthId)
+  const selMonthIngresos = (['julio', 'flor'] as const).reduce((sum, src) => sum + (incomeByMonth[selectedMonthId]?.[src]?.amount ?? 0), 0)
+  const selMonthGastos = gastoRows.reduce((sum, label) => sum + (gastosByMonth[selectedMonthId]?.[label]?.amount ?? 0), 0)
+  const selMonthDeudas = deudaRows.reduce((sum, label) => sum + (deudasByMonth[selectedMonthId]?.[label]?.amount ?? 0), 0)
+  const heroBalance = selMonthIngresos - selMonthGastos - selMonthDeudas
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">Cuentas del Presupuesto</h1>
+        <div>
+          <h1 className="text-xl font-bold" style={{color:'var(--t)'}}>Cuentas</h1>
+          <p className="text-xs mt-0.5" style={{color:'var(--t3)'}}>
+            Presupuesto {selMonth ? `${MONTH_NAMES[selMonth.month]} ${selMonth.year}` : ''}
+          </p>
+        </div>
         <select
-          className="border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm"
+          className="rounded-xl text-xs font-medium px-3 py-2"
+          style={{background:'var(--surface)',border:'1px solid var(--border)',outline:'none',color:'var(--t)'}}
           value={selectedMonthId}
           onChange={async e => {
             const val = e.target.value
@@ -846,859 +931,760 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
         </select>
       </div>
 
-      {loading ? <p className="text-slate-400 dark:text-slate-500 text-sm">Cargando...</p> : (
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-            <h2 className="font-semibold text-slate-800 dark:text-slate-200 text-sm">Resumen por cuenta Scotiabank</h2>
-            <div className="flex items-center gap-2">
-              {copyResult === 'success' && (
-                <span className="text-xs text-accent font-medium">✓ Copiado</span>
-              )}
-              {copyResult === 'error' && (
-                <span className="text-xs text-red-500 dark:text-red-400 font-medium">Error al copiar</span>
-              )}
-              {!isSelectedMonthLocked && (
-                <button
-                  onClick={copyFromPreviousMonth}
-                  disabled={copying || !getDisplayMonths(months, selectedMonthId)[1]}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-sky-100 hover:bg-sky-200 disabled:bg-slate-100 disabled:cursor-not-allowed text-sky-700 dark:bg-sky-900/40 dark:hover:bg-sky-900/60 dark:disabled:bg-slate-800 dark:text-sky-300 transition-colors"
-                >
-                  {copying ? (
-                    <>
-                      <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                      </svg>
-                      Copiando...
-                    </>
-                  ) : (
-                    <>
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
-                        <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
-                      </svg>
-                      Copiar mes anterior
-                    </>
-                  )}
-                </button>
-              )}
+      {/* Hero — balance del mes */}
+      <div className="relative overflow-hidden rounded-2xl p-5" style={{background:'var(--accent)'}}>
+        <div style={{position:'absolute',top:-28,right:-28,width:120,height:120,borderRadius:'50%',background:'rgba(255,255,255,.08)'}}/>
+        <div style={{position:'absolute',bottom:-36,right:60,width:90,height:90,borderRadius:'50%',background:'rgba(255,255,255,.05)'}}/>
+        <div className="relative">
+          <p className="text-[10px] font-semibold uppercase tracking-widest" style={{color:'rgba(255,255,255,.7)'}}>
+            Balance mensual · {selMonth ? MONTH_NAMES[selMonth.month] : ''}
+          </p>
+          <p className="font-mono font-bold" style={{color:'#fff',fontSize:34,letterSpacing:'-0.02em',marginTop:2,lineHeight:1.1}}>
+            {heroBalance >= 0 ? '+' : ''}{fmt(heroBalance)}
+          </p>
+          <div className="flex items-stretch gap-3 mt-3">
+            <div style={{flex:1}}>
+              <p className="text-[9px] uppercase tracking-wider" style={{color:'rgba(255,255,255,.6)'}}>Ingresos</p>
+              <p className="font-mono text-[13px] font-semibold" style={{color:'#fff'}}>{fmt(selMonthIngresos)}</p>
             </div>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 dark:divide-slate-700">
-            {ACCOUNTS.map(acc => {
-              const amt = byAccount[acc.key] ?? 0
-              const isEditing = editingAccountKey === acc.key
-              return (
-                <div key={acc.key} className="p-4">
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{acc.label}</p>
-                  {acc.key === 'power' ? (
-                    <p className="text-lg font-bold text-slate-800 dark:text-slate-200 mt-1">
-                      S/ {powerTotal.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
-                    </p>
-                  ) : isEditing ? (
-                    <div className="mt-1 flex items-center gap-1">
-                      <span className="text-sm text-slate-400 dark:text-slate-500">S/</span>
-                      <input
-                        autoFocus
-                        type="number"
-                        step="0.01"
-                        className="w-full border border-accent rounded px-2 py-1 text-sm font-bold text-slate-800"
-                        value={editAccountValue}
-                        onChange={e => setEditAccountValue(e.target.value)}
-                        onBlur={() => saveAccountAmount(acc.key)}
-                        onKeyDown={e => { if (e.key === 'Enter') saveAccountAmount(acc.key); if (e.key === 'Escape') setEditingAccountKey(null) }}
-                      />
-                    </div>
-                  ) : (
-                    <p
-                      className={isSelectedMonthLocked ? 'text-lg font-bold text-slate-400 dark:text-slate-500 mt-1' : 'text-lg font-bold text-slate-800 dark:text-slate-200 mt-1 cursor-pointer hover:text-accent transition-colors'}
-                      onClick={() => { if (isSelectedMonthLocked) return; setEditingAccountKey(acc.key); setEditAccountValue(amt.toString()) }}
-                    >
-                      S/ {amt.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
-                    </p>
-                  )}
-                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{acc.description}</p>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Saldo después de Deudas */}
-      {(() => {
-        const displayMonths = getDisplayMonths(months, selectedMonthId)
-        if (displayMonths.every(m => m == null)) return null
-        return (
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
-              <h2 className="font-semibold text-slate-800 dark:text-slate-200 text-sm">Saldo después de Deudas</h2>
+            <div style={{width:1,background:'rgba(255,255,255,.25)'}}/>
+            <div style={{flex:1}}>
+              <p className="text-[9px] uppercase tracking-wider" style={{color:'rgba(255,255,255,.6)'}}>Gastos</p>
+              <p className="font-mono text-[13px] font-semibold" style={{color:'#fff'}}>{fmt(selMonthGastos)}</p>
             </div>
-            <div className="overflow-x-auto table-scroll">
-            <table className="w-full text-sm table-fixed" style={{minWidth:'320px'}}>
-              <colgroup><col className="min-w-[110px]" /><col className="hidden md:table-column w-32" /><col className="w-32" /><col className="w-32" /><col className="w-8" /></colgroup>
-              <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-700">
-                  <th />
-                  {monthLabels.map((label, i) => (
-                    <th key={i} className={`text-right px-4 py-2 font-semibold uppercase text-xs tracking-wide${i === 0 ? ' hidden md:table-cell text-slate-600 dark:text-slate-400' : i === 2 ? ' text-accent' : ' text-slate-600 dark:text-slate-400'}`}>
-                      {label}
-                    </th>
-                  ))}
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td />
-                  {displayMonths.map((m, i) => {
-                    const hiddenCls = i === 0 ? ' hidden md:table-cell' : ''
-                    const currentCls = i === 2 ? ' bg-col-current' : ''
-                    if (!m) return <td key={i} className={`px-4 py-3 text-right text-slate-400${hiddenCls}${currentCls}`}>—</td>
-                    const ingresos = (['julio', 'flor'] as const).reduce(
-                      (sum, src) => sum + (incomeByMonth[m.id]?.[src]?.amount ?? 0), 0
-                    )
-                    const gastos = gastoRows.reduce(
-                      (sum, label) => sum + (gastosByMonth[m.id]?.[label]?.amount ?? 0), 0
-                    )
-                    const deudas = deudaRows.reduce(
-                      (sum, label) => sum + (deudasByMonth[m.id]?.[label]?.amount ?? 0), 0
-                    )
-                    const saldo = ingresos - gastos - deudas
-                    return (
-                      <td key={i} className={`px-4 py-3 text-right font-semibold${hiddenCls}${currentCls} ${saldo >= 0 ? 'text-accent' : 'text-red-500 dark:text-red-400'}`}>
-                        {saldo.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
-                      </td>
-                    )
-                  })}
-                  <td />
-                </tr>
-              </tbody>
-            </table>
+            <div style={{width:1,background:'rgba(255,255,255,.25)'}}/>
+            <div style={{flex:1}}>
+              <p className="text-[9px] uppercase tracking-wider" style={{color:'rgba(255,255,255,.6)'}}>Deudas</p>
+              <p className="font-mono text-[13px] font-semibold" style={{color:'#fff'}}>{fmt(selMonthDeudas)}</p>
             </div>
-          </div>
-        )
-      })()}
-
-      {/* Ingresos & Gastos tables — shared displayMonths */}
-      {/* Ingresos table — 3-month view */}
-      {(() => {
-        const displayMonths = getDisplayMonths(months, selectedMonthId)
-        if (displayMonths.every(m => m == null)) return null
-        return (
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
-              <h2 className="font-semibold text-slate-800 dark:text-slate-200 text-sm">Ingresos</h2>
-            </div>
-            <div className="overflow-x-auto table-scroll">
-              <table className="w-full text-sm table-fixed" style={{minWidth:'320px'}}>
-                <colgroup><col className="min-w-[110px]" /><col className="hidden md:table-column w-32" /><col className="w-32" /><col className="w-32" /><col className="w-8" /></colgroup>
-                <thead>
-                  <tr className="border-b border-slate-100 dark:border-slate-700">
-                    <th className="text-left px-4 py-2 font-semibold text-slate-600 dark:text-slate-400 uppercase text-xs tracking-wide">CASH</th>
-                    {monthLabels.map((label, i) => (
-                      <th key={i} className={`text-right px-4 py-2 font-semibold uppercase text-xs tracking-wide${i === 0 ? ' hidden md:table-cell' : ''} ${i === 2 ? 'text-accent' : 'text-slate-600 dark:text-slate-400'}`}>
-                        {label}
-                      </th>
-                    ))}
-                    <th />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
-                  {INCOME_SOURCES.map(({ key, label }) => (
-                    <tr key={key} className="group/row hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                      <td className="px-4 py-2.5 font-medium text-slate-700 dark:text-slate-300">{label}</td>
-                      {displayMonths.map((m, i) => {
-                        const hiddenCls = i === 0 ? ' hidden md:table-cell' : ''
-                        const currentCls = i === 2 ? ' bg-col-current' : ''
-                        if (!m) return <td key={i} className={`px-4 py-2.5 text-right text-slate-400${hiddenCls}${currentCls}`}>—</td>
-                        const entry = incomeByMonth[m.id]?.[key]
-                        const isEditing = editingCell?.monthId === m.id && editingCell?.source === key
-                        const isEditingCmt = editingComment?.monthId === m.id && editingComment?.source === key
-                        const hasComment = key === 'otros_ingresos' && !!entry?.description
-                        return (
-                          <td key={i} className={`px-4 py-2.5 text-right${hiddenCls}${currentCls}`}>
-                            <div className="group/tip flex items-center justify-end gap-1.5 relative w-full">
-                              {/* Comment icon / edit button / input — all left of amount */}
-                              {key === 'otros_ingresos' && (
-                                isEditingCmt ? (
-                                  <input
-                                    autoFocus
-                                    type="text"
-                                    className="w-40 border border-amber-400 dark:border-amber-500 rounded px-2 py-0.5 text-xs text-slate-800 dark:text-slate-200 dark:bg-slate-700"
-                                    value={editCommentValue}
-                                    placeholder="Agregar comentario..."
-                                    onChange={e => setEditCommentValue(e.target.value)}
-                                    onBlur={() => saveIncomeComment(m.id, key)}
-                                    onKeyDown={e => {
-                                      if (e.key === 'Enter') saveIncomeComment(m.id, key)
-                                      if (e.key === 'Escape') setEditingComment(null)
-                                    }}
-                                  />
-                                ) : hasComment ? (
-                                  <span className="relative flex-shrink-0 cursor-help text-amber-400 hover:text-amber-500" onClick={() => { if (m.locked) return; setEditingComment({ monthId: m.id, source: key }); setEditCommentValue(entry?.description ?? '') }}>
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
-                                      <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
-                                    </svg>
-                                    <span className="pointer-events-none invisible group-hover/tip:visible opacity-0 group-hover/tip:opacity-100 transition-opacity absolute bottom-full left-0 mb-1.5 z-20 w-52 rounded-lg bg-slate-900 dark:bg-slate-700 px-3 py-2 text-xs text-white text-left leading-snug shadow-lg">
-                                      {entry!.description}
-                                      <span className="absolute top-full left-2 border-4 border-transparent border-t-slate-900 dark:border-t-slate-700" />
-                                    </span>
-                                  </span>
-                                ) : (
-                                  <button
-                                    className="opacity-0 group-hover/row:opacity-100 transition-opacity flex-shrink-0 text-slate-400 hover:text-amber-500 dark:hover:text-amber-400"
-                                    title="Agregar comentario"
-                                    onClick={() => { if (m.locked) return; setEditingComment({ monthId: m.id, source: key }); setEditCommentValue('') }}
-                                  >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
-                                      <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
-                                    </svg>
-                                  </button>
-                                )
-                              )}
-                              {/* Amount */}
-                              {isEditing ? (
-                                <input
-                                  autoFocus
-                                  type="number"
-                                  step="0.01"
-                                  className="w-full min-w-0 border border-accent rounded px-2 py-0.5 text-sm text-right font-medium text-slate-800 dark:text-slate-200 dark:bg-slate-700"
-                                  value={editCellValue}
-                                  onChange={e => setEditCellValue(e.target.value)}
-                                  onBlur={() => saveIncomeCell(m.id, key)}
-                                  onKeyDown={e => {
-                                    if (e.key === 'Enter') saveIncomeCell(m.id, key)
-                                    if (e.key === 'Escape') setEditingCell(null)
-                                  }}
-                                />
-                              ) : (
-                                <span
-                                  className={m.locked ? 'font-medium text-slate-400 dark:text-slate-500' : 'cursor-pointer hover:text-accent transition-colors font-medium text-slate-800 dark:text-slate-200'}
-                                  onClick={() => {
-                                    if (m.locked) return
-                                    setEditingCell({ monthId: m.id, source: key })
-                                    setEditCellValue((entry?.amount ?? 0).toString())
-                                  }}
-                                >
-                                  {(entry?.amount ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                        )
-                      })}
-                      <td />
-                    </tr>
-                  ))}
-                  {/* TOTAL INGRESOS row — sum of julio + flor only */}
-                  <tr className="bg-slate-50 dark:bg-slate-700/40 font-semibold">
-                    <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300 uppercase text-xs tracking-wide">TOTAL INGRESOS</td>
-                    {displayMonths.map((m, i) => {
-                      const hiddenCls = i === 0 ? ' hidden md:table-cell' : ''
-                      const currentCls = i === 2 ? ' bg-col-current' : ''
-                      if (!m) return <td key={i} className={`px-4 py-2.5 text-right text-slate-400${hiddenCls}${currentCls}`}>—</td>
-                      const total = (['julio', 'flor'] as const).reduce(
-                        (sum, src) => sum + (incomeByMonth[m.id]?.[src]?.amount ?? 0), 0
-                      )
-                      return (
-                        <td key={i} className={`px-4 py-2.5 text-right text-slate-800 dark:text-slate-200${hiddenCls}${currentCls}`}>
-                          {total.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
-                        </td>
-                      )
-                    })}
-                    <td />
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )
-      })()}
-
-      {/* Gastos presupuestados table — 3-month view */}
-      {(() => {
-        const displayMonths = getDisplayMonths(months, selectedMonthId)
-        if (displayMonths.every(m => m == null)) return null
-        return (
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
-              <h2 className="font-semibold text-slate-800 dark:text-slate-200 text-sm">Gastos presupuestados</h2>
-            </div>
-            <div className="overflow-x-auto table-scroll">
-              <table className="w-full text-sm table-fixed" style={{minWidth:'320px'}}>
-                <colgroup><col className="min-w-[110px]" /><col className="hidden md:table-column w-32" /><col className="w-32" /><col className="w-32" /><col className="w-8" /></colgroup>
-                <thead>
-                  <tr className="border-b border-slate-100 dark:border-slate-700">
-                    <th className="text-left px-4 py-2 font-semibold text-slate-600 dark:text-slate-400 uppercase text-xs tracking-wide">GASTO</th>
-                    {monthLabels.map((label, i) => (
-                      <th key={i} className={`text-right px-4 py-2 font-semibold uppercase text-xs tracking-wide${i === 0 ? ' hidden md:table-cell' : ''} ${i === 2 ? 'text-accent' : 'text-slate-600 dark:text-slate-400'}`}>
-                        {label}
-                      </th>
-                    ))}
-                    <th />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
-                  {gastoRows.map(label => {
-                    const isEditingLbl = editingGastoLabel === label
-                    const displayLabel = label.startsWith('__new_') ? '' : label
-                    return (
-                      <tr key={label} className="group/gasto hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                        {/* Label cell */}
-                        <td className="px-4 py-2">
-                          {isEditingLbl ? (
-                            <input
-                              autoFocus
-                              type="text"
-                              className="w-full border border-accent rounded px-2 py-0.5 text-sm text-slate-800 dark:text-slate-200 dark:bg-slate-700"
-                              value={editGastoLabelValue}
-                              placeholder="Nombre del gasto..."
-                              onChange={e => setEditGastoLabelValue(e.target.value)}
-                              onBlur={() => saveGastoLabel(label)}
-                              onKeyDown={e => {
-                                if (e.key === 'Enter') saveGastoLabel(label)
-                                if (e.key === 'Escape') {
-                                  if (label.startsWith('__new_')) setGastoRows(prev => prev.filter(l => l !== label))
-                                  setEditingGastoLabel(null)
-                                }
-                              }}
-                            />
-                          ) : (
-                            <span
-                              className="cursor-pointer text-slate-700 dark:text-slate-300 font-medium hover:text-accent transition-colors"
-                              onClick={() => { setEditingGastoLabel(label); setEditGastoLabelValue(displayLabel) }}
-                            >
-                              {displayLabel || <em className="text-slate-400 not-italic">Sin nombre</em>}
-                            </span>
-                          )}
-                        </td>
-                        {/* Amount cells */}
-                        {displayMonths.map((m, i) => {
-                          const hiddenCls = i === 0 ? ' hidden md:table-cell' : ''
-                          const currentCls = i === 2 ? ' bg-col-current' : ''
-                          if (!m) return <td key={i} className={`px-4 py-2 text-right text-slate-400${hiddenCls}${currentCls}`}>—</td>
-                          const entry = gastosByMonth[m.id]?.[label]
-                          const isEditingCell = editingGastoCell?.monthId === m.id && editingGastoCell?.label === label
-                          return (
-                            <td key={i} className={`px-4 py-2 text-right${hiddenCls}${currentCls}`}>
-                              {isEditingCell ? (
-                                <input
-                                  autoFocus
-                                  type="number"
-                                  step="0.01"
-                                  className="w-full min-w-0 border border-accent rounded px-2 py-0.5 text-sm text-right font-medium text-slate-800 dark:text-slate-200 dark:bg-slate-700"
-                                  value={editGastoCellValue}
-                                  onChange={e => setEditGastoCellValue(e.target.value)}
-                                  onBlur={() => saveGastoCell(m.id, label)}
-                                  onKeyDown={e => {
-                                    if (e.key === 'Enter') saveGastoCell(m.id, label)
-                                    if (e.key === 'Escape') setEditingGastoCell(null)
-                                  }}
-                                />
-                              ) : (
-                                <span
-                                  className={m.locked ? 'font-medium text-slate-400 dark:text-slate-500' : 'cursor-pointer hover:text-accent transition-colors font-medium text-slate-800 dark:text-slate-200'}
-                                  onClick={() => {
-                                    if (m.locked) return
-                                    if (label.startsWith('__new_') && !editGastoLabelValue) return
-                                    setEditingGastoCell({ monthId: m.id, label })
-                                    setEditGastoCellValue((entry?.amount ?? 0).toString())
-                                  }}
-                                >
-                                  {(entry?.amount ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
-                                </span>
-                              )}
-                            </td>
-                          )
-                        })}
-                        {/* Delete button */}
-                        <td className="px-2 py-2">
-                          <button
-                            className="opacity-0 group-hover/gasto:opacity-100 transition-opacity text-slate-300 hover:text-red-400 dark:text-slate-600 dark:hover:text-red-400"
-                            title="Eliminar fila"
-                            onClick={() => removeGastoRow(label)}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                            </svg>
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                  {/* TOTAL GASTOS row */}
-                  <tr className="bg-slate-50 dark:bg-slate-700/40 font-semibold">
-                    <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300 uppercase text-xs tracking-wide">TOTAL GASTOS</td>
-                    {displayMonths.map((m, i) => {
-                      const hiddenCls = i === 0 ? ' hidden md:table-cell' : ''
-                      const currentCls = i === 2 ? ' bg-col-current' : ''
-                      if (!m) return <td key={i} className={`px-4 py-2.5 text-right text-slate-400${hiddenCls}${currentCls}`}>—</td>
-                      const total = gastoRows.reduce((sum, label) => sum + (gastosByMonth[m.id]?.[label]?.amount ?? 0), 0)
-                      return (
-                        <td key={i} className={`px-4 py-2.5 text-right text-slate-800 dark:text-slate-200${hiddenCls}${currentCls}`}>
-                          {total.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
-                        </td>
-                      )
-                    })}
-                    <td />
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            {/* Add row button */}
-            <div className="px-4 py-2.5 border-t border-slate-100 dark:border-slate-700">
-              <button
-                className="inline-flex items-center gap-1.5 text-xs text-accent hover:text-accent font-medium transition-colors"
-                onClick={addGastoRow}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                </svg>
-                Agregar fila
-              </button>
-            </div>
-          </div>
-        )
-      })()}
-
-      {/* Ingresos - Gastos */}
-      {(() => {
-        const displayMonths = getDisplayMonths(months, selectedMonthId)
-        if (displayMonths.every(m => m == null)) return null
-        return (
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
-              <h2 className="font-semibold text-slate-800 dark:text-slate-200 text-sm">Ingresos - Gastos</h2>
-            </div>
-            <div className="overflow-x-auto table-scroll">
-            <table className="w-full text-sm table-fixed" style={{minWidth:'320px'}}>
-              <colgroup><col className="min-w-[110px]" /><col className="hidden md:table-column w-32" /><col className="w-32" /><col className="w-32" /><col className="w-8" /></colgroup>
-              <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-700">
-                  <th />
-                  {monthLabels.map((label, i) => (
-                    <th key={i} className={`text-right px-4 py-2 font-semibold uppercase text-xs tracking-wide${i === 0 ? ' hidden md:table-cell text-slate-600 dark:text-slate-400' : i === 2 ? ' text-accent' : ' text-slate-600 dark:text-slate-400'}`}>
-                      {label}
-                    </th>
-                  ))}
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td />
-                  {displayMonths.map((m, i) => {
-                    const hiddenCls = i === 0 ? ' hidden md:table-cell' : ''
-                    const currentCls = i === 2 ? ' bg-col-current' : ''
-                    if (!m) return <td key={i} className={`px-4 py-3 text-right text-slate-400${hiddenCls}${currentCls}`}>—</td>
-                    const ingresos = (['julio', 'flor'] as const).reduce(
-                      (sum, src) => sum + (incomeByMonth[m.id]?.[src]?.amount ?? 0), 0
-                    )
-                    const gastos = gastoRows.reduce(
-                      (sum, label) => sum + (gastosByMonth[m.id]?.[label]?.amount ?? 0), 0
-                    )
-                    const balance = ingresos - gastos
-                    return (
-                      <td key={i} className={`px-4 py-3 text-right font-semibold${hiddenCls}${currentCls} ${balance >= 0 ? 'text-accent' : 'text-red-500 dark:text-red-400'}`}>
-                        {balance.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
-                      </td>
-                    )
-                  })}
-                  <td />
-                </tr>
-              </tbody>
-            </table>
-            </div>
-          </div>
-        )
-      })()}
-
-      {/* Deudas table — 3-month view */}
-      {(() => {
-        const displayMonths = getDisplayMonths(months, selectedMonthId)
-        if (displayMonths.every(m => m == null)) return null
-        return (
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
-              <h2 className="font-semibold text-slate-800 dark:text-slate-200 text-sm">Deudas</h2>
-            </div>
-            <div className="overflow-x-auto table-scroll">
-              <table className="w-full text-sm table-fixed" style={{minWidth:'320px'}}>
-                <colgroup><col className="min-w-[110px]" /><col className="hidden md:table-column w-32" /><col className="w-32" /><col className="w-32" /><col className="w-8" /></colgroup>
-                <thead>
-                  <tr className="border-b border-slate-100 dark:border-slate-700">
-                    <th className="text-left px-4 py-2 font-semibold text-slate-600 dark:text-slate-400 uppercase text-xs tracking-wide">DEUDA</th>
-                    {monthLabels.map((label, i) => (
-                      <th key={i} className={`text-right px-4 py-2 font-semibold uppercase text-xs tracking-wide${i === 0 ? ' hidden md:table-cell' : ''} ${i === 2 ? 'text-accent' : 'text-slate-600 dark:text-slate-400'}`}>
-                        {label}
-                      </th>
-                    ))}
-                    <th />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
-                  {deudaRows.map(label => {
-                    const isEditingLbl = editingDeudaLabel === label
-                    const displayLabel = label.startsWith('__new_') ? '' : label
-                    return (
-                      <tr key={label} className="group/deuda hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                        <td className="px-4 py-2">
-                          {isEditingLbl ? (
-                            <input
-                              autoFocus
-                              type="text"
-                              className="w-full border border-accent rounded px-2 py-0.5 text-sm text-slate-800 dark:text-slate-200 dark:bg-slate-700"
-                              value={editDeudaLabelValue}
-                              placeholder="Nombre de deuda..."
-                              onChange={e => setEditDeudaLabelValue(e.target.value)}
-                              onBlur={() => saveDeudaLabel(label)}
-                              onKeyDown={e => {
-                                if (e.key === 'Enter') saveDeudaLabel(label)
-                                if (e.key === 'Escape') {
-                                  if (label.startsWith('__new_')) setDeudaRows(prev => prev.filter(l => l !== label))
-                                  setEditingDeudaLabel(null)
-                                }
-                              }}
-                            />
-                          ) : (
-                            <span
-                              className="cursor-pointer text-slate-700 dark:text-slate-300 font-medium hover:text-accent transition-colors"
-                              onClick={() => { setEditingDeudaLabel(label); setEditDeudaLabelValue(displayLabel) }}
-                            >
-                              {displayLabel || <em className="text-slate-400 not-italic">Sin nombre</em>}
-                            </span>
-                          )}
-                        </td>
-                        {displayMonths.map((m, i) => {
-                          const hiddenCls = i === 0 ? ' hidden md:table-cell' : ''
-                          const currentCls = i === 2 ? ' bg-col-current' : ''
-                          if (!m) return <td key={i} className={`px-4 py-2 text-right text-slate-400${hiddenCls}${currentCls}`}>—</td>
-                          const entry = deudasByMonth[m.id]?.[label]
-                          const isEditingCell = editingDeudaCell?.monthId === m.id && editingDeudaCell?.label === label
-                          return (
-                            <td key={i} className={`px-4 py-2 text-right${hiddenCls}${currentCls}`}>
-                              {isEditingCell ? (
-                                <input
-                                  autoFocus
-                                  type="number"
-                                  step="0.01"
-                                  className="w-full min-w-0 border border-accent rounded px-2 py-0.5 text-sm text-right font-medium text-slate-800 dark:text-slate-200 dark:bg-slate-700"
-                                  value={editDeudaCellValue}
-                                  onChange={e => setEditDeudaCellValue(e.target.value)}
-                                  onBlur={() => saveDeudaCell(m.id, label)}
-                                  onKeyDown={e => {
-                                    if (e.key === 'Enter') saveDeudaCell(m.id, label)
-                                    if (e.key === 'Escape') setEditingDeudaCell(null)
-                                  }}
-                                />
-                              ) : (
-                                <span
-                                  className={m.locked ? 'font-medium text-slate-400 dark:text-slate-500' : 'cursor-pointer hover:text-accent transition-colors font-medium text-slate-800 dark:text-slate-200'}
-                                  onClick={() => {
-                                    if (m.locked) return
-                                    if (label.startsWith('__new_')) return
-                                    setEditingDeudaCell({ monthId: m.id, label })
-                                    setEditDeudaCellValue((entry?.amount ?? 0).toString())
-                                  }}
-                                >
-                                  {(entry?.amount ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
-                                </span>
-                              )}
-                            </td>
-                          )
-                        })}
-                        <td className="px-2 py-2">
-                          <button
-                            className="opacity-0 group-hover/deuda:opacity-100 transition-opacity text-slate-300 hover:text-red-400 dark:text-slate-600 dark:hover:text-red-400"
-                            title="Eliminar fila"
-                            onClick={() => removeDeudaRow(label)}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                            </svg>
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                  <tr className="bg-slate-50 dark:bg-slate-700/40 font-semibold">
-                    <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300 uppercase text-xs tracking-wide">TOTAL DEUDAS</td>
-                    {displayMonths.map((m, i) => {
-                      const hiddenCls = i === 0 ? ' hidden md:table-cell' : ''
-                      const currentCls = i === 2 ? ' bg-col-current' : ''
-                      if (!m) return <td key={i} className={`px-4 py-2.5 text-right text-slate-400${hiddenCls}${currentCls}`}>—</td>
-                      const total = deudaRows.reduce((sum, label) => sum + (deudasByMonth[m.id]?.[label]?.amount ?? 0), 0)
-                      return (
-                        <td key={i} className={`px-4 py-2.5 text-right text-slate-800 dark:text-slate-200${hiddenCls}${currentCls}`}>
-                          {total.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
-                        </td>
-                      )
-                    })}
-                    <td />
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div className="px-4 py-2.5 border-t border-slate-100 dark:border-slate-700">
-              <button
-                className="inline-flex items-center gap-1.5 text-xs text-accent hover:text-accent font-medium transition-colors"
-                onClick={addDeudaRow}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                </svg>
-                Agregar fila
-              </button>
-            </div>
-          </div>
-        )
-      })()}
-
-      {/* Repartición de pagos/gastos */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2">
-          <h2 className="font-semibold text-slate-800 dark:text-slate-200 text-sm">Repartición de pagos/gastos</h2>
-          {distLoading && <span className="text-xs text-slate-400 dark:text-slate-500">Cargando...</span>}
-        </div>
-        <div className="overflow-x-auto md:max-h-[60vh] md:overflow-y-auto">
-          <table className="text-xs table-fixed w-full" style={{minWidth: `${192 + DIST_COLS.length * 112 + 32}px`}}>
-            <colgroup>
-              <col className="w-48" />
-              {DIST_COLS.map(c => <col key={c.key} className="w-28" />)}
-              <col className="w-8" />
-            </colgroup>
-            <thead className="sticky top-0 z-10">
-              <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700">
-                <th className="text-left px-3 py-2 font-medium text-slate-500 dark:text-slate-400 sticky left-0 z-20 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700">GASTO/EGRESO</th>
-                {DIST_COLS.map(c => (
-                  <th key={c.key} className="text-right px-3 py-2 font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">{c.label}</th>
-                ))}
-                <th className="px-3 py-2" />
-              </tr>
-            </thead>
-            <tbody>
-              {distRows.map(row => (
-                <tr key={row.id} className="group/dist border-b border-slate-50 dark:border-slate-700/50 last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-700/30">
-                  <td className="sticky left-0 z-10 bg-white dark:bg-slate-800 group-hover/dist:bg-slate-50 dark:group-hover/dist:bg-slate-700/30 border-r border-slate-100 dark:border-slate-700 px-4 py-2 min-w-[192px]">
-                    {editingDistCell?.rowId === row.id && editingDistCell.field === 'gasto_egreso' ? (
-                      <input
-                        autoFocus
-                        type="text"
-                        className="w-full min-w-0 border border-accent rounded px-2 py-0.5 text-sm text-slate-800 dark:text-slate-200 dark:bg-slate-700"
-                        value={editDistCellValue}
-                        onChange={e => setEditDistCellValue(e.target.value)}
-                        onBlur={() => commitDistCell(row.id, 'gasto_egreso', editDistCellValue)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter') commitDistCell(row.id, 'gasto_egreso', editDistCellValue)
-                          if (e.key === 'Escape') setEditingDistCell(null)
-                        }}
-                      />
-                    ) : (
-                      <span
-                        className={isSelectedMonthLocked ? 'font-medium text-slate-400 dark:text-slate-500' : 'cursor-pointer hover:text-accent transition-colors font-medium text-slate-800 dark:text-slate-200'}
-                        onClick={() => { if (isSelectedMonthLocked) return; setEditingDistCell({ rowId: row.id, field: 'gasto_egreso' }); setEditDistCellValue(row.gasto_egreso) }}
-                      >
-                        {row.gasto_egreso || <em className="text-slate-400 not-italic font-normal">Sin nombre</em>}
-                      </span>
-                    )}
-                  </td>
-                  {DIST_COLS.map(c => {
-                    const autoVal = getAutoDistValue(row.gasto_egreso, c.key)
-                    const isAuto = autoVal !== null
-                    const effectiveVal = isAuto ? autoVal : (row[c.key] ?? 0)
-                    return (
-                      <td key={c.key} className="px-4 py-2 text-right">
-                        {isAuto ? (
-                          <span className={`font-medium ${effectiveVal > 0 ? 'text-accent' : 'text-slate-300 dark:text-slate-700'}`}>
-                            {effectiveVal > 0 ? effectiveVal.toLocaleString('es-PE', { minimumFractionDigits: 2 }) : '—'}
-                          </span>
-                        ) : editingDistCell?.rowId === row.id && editingDistCell.field === c.key ? (
-                          <input
-                            autoFocus
-                            type="number"
-                            step="0.01"
-                            className="w-full min-w-0 border border-accent rounded px-2 py-0.5 text-sm text-right font-medium text-slate-800 dark:text-slate-200 dark:bg-slate-700"
-                            value={editDistCellValue}
-                            onChange={e => setEditDistCellValue(e.target.value)}
-                            onBlur={() => commitDistCell(row.id, c.key, editDistCellValue)}
-                            onKeyDown={e => {
-                              if (e.key === 'Enter') commitDistCell(row.id, c.key, editDistCellValue)
-                              if (e.key === 'Escape') setEditingDistCell(null)
-                            }}
-                          />
-                        ) : (
-                          <span
-                            className={isSelectedMonthLocked ? 'font-medium text-slate-400 dark:text-slate-500' : `cursor-pointer transition-colors font-medium ${effectiveVal > 0 ? 'text-slate-800 dark:text-slate-200 hover:text-accent' : 'text-slate-300 dark:text-slate-700 hover:text-accent'}`}
-                            onClick={() => { if (isSelectedMonthLocked) return; setEditingDistCell({ rowId: row.id, field: c.key }); setEditDistCellValue(effectiveVal === 0 ? '' : effectiveVal.toString()) }}
-                          >
-                            {effectiveVal > 0 ? effectiveVal.toLocaleString('es-PE', { minimumFractionDigits: 2 }) : '—'}
-                          </span>
-                        )}
-                      </td>
-                    )
-                  })}
-                  <td className="px-2 py-2">
-                    <button
-                      onClick={() => { if (isSelectedMonthLocked) return; deleteDistRow(row) }}
-                      className={isSelectedMonthLocked ? 'hidden' : 'opacity-0 group-hover/dist:opacity-100 transition-opacity text-slate-300 hover:text-red-400 dark:text-slate-600 dark:hover:text-red-400'}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {/* Sobrante row — saldo del mes (ingresos - gastos - deudas) → columna power */}
-              {(() => {
-                const sobrante =
-                  (['julio', 'flor'] as const).reduce((sum, src) => sum + (incomeByMonth[selectedMonthId]?.[src]?.amount ?? 0), 0)
-                  - gastoRows.reduce((sum, label) => sum + (gastosByMonth[selectedMonthId]?.[label]?.amount ?? 0), 0)
-                  - deudaRows.reduce((sum, label) => sum + (deudasByMonth[selectedMonthId]?.[label]?.amount ?? 0), 0)
-                return (
-                  <tr className="border-t border-slate-100 dark:border-slate-700 bg-amber-50/50 dark:bg-amber-900/10">
-                    <td className="sticky left-0 z-10 bg-amber-50/50 dark:bg-amber-900/10 border-r border-slate-100 dark:border-slate-700 px-4 py-2 font-medium text-amber-700 dark:text-amber-400 text-xs">Sobrante</td>
-                    {DIST_COLS.map(c => (
-                      <td key={c.key} className="px-4 py-2 text-right">
-                        {c.key === 'power' ? (
-                          <span className={`font-medium text-xs ${sobrante >= 0 ? 'text-amber-600 dark:text-amber-400' : 'text-red-500 dark:text-red-400'}`}>
-                            {sobrante.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
-                          </span>
-                        ) : (
-                          <span className="text-slate-300 dark:text-slate-700 text-xs">—</span>
-                        )}
-                      </td>
-                    ))}
-                    <td />
-                  </tr>
-                )
-              })()}
-              {/* Totals row */}
-              {(() => {
-                const ingresoTotal = (['julio', 'flor'] as const).reduce(
-                  (sum, src) => sum + (incomeByMonth[selectedMonthId]?.[src]?.amount ?? 0), 0
-                )
-                const sobrante =
-                  ingresoTotal
-                  - gastoRows.reduce((sum, label) => sum + (gastosByMonth[selectedMonthId]?.[label]?.amount ?? 0), 0)
-                  - deudaRows.reduce((sum, label) => sum + (deudasByMonth[selectedMonthId]?.[label]?.amount ?? 0), 0)
-                const colTotals = DIST_COLS.map(c => {
-                  const fromRows = distRows.reduce((sum, row) => {
-                    const autoVal = getAutoDistValue(row.gasto_egreso, c.key)
-                    const val = row[c.key] !== null ? (row[c.key] ?? 0) : (autoVal ?? 0)
-                    return sum + val
-                  }, 0)
-                  return c.key === 'power' ? fromRows + sobrante : fromRows
-                })
-                const grandTotal = colTotals.reduce((s, v) => s + v, 0)
-                const matches = Math.abs(grandTotal - ingresoTotal) < 0.01
-                return (
-                  <>
-                    <tr className="bg-slate-50 dark:bg-slate-900/50 border-t-2 border-slate-200 dark:border-slate-600">
-                      <td className="sticky left-0 z-20 bg-slate-50 dark:bg-slate-900/50 border-r border-slate-200 dark:border-slate-700 px-4 py-2 font-semibold text-slate-700 dark:text-slate-300 uppercase text-xs tracking-wide">TOTAL</td>
-                      {colTotals.map((total, i) => (
-                        <td key={DIST_COLS[i].key} className="px-4 py-2 text-right font-semibold text-slate-800 dark:text-slate-200 text-xs">
-                          {total.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
-                        </td>
-                      ))}
-                      <td />
-                    </tr>
-                    <tr className={`sticky bottom-0 z-10 border-t border-slate-200 dark:border-slate-600 ${matches ? 'bg-asoft' : 'bg-red-100 dark:bg-red-900'}`}>
-                      <td className={`sticky left-0 z-20 border-r border-slate-200 dark:border-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-wide ${matches ? 'bg-asoft text-atext' : 'bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300'}`}>
-                        {matches ? '✓ Cuadra' : '✗ No cuadra'}
-                      </td>
-                      <td colSpan={DIST_COLS.length} className="px-4 py-2">
-                        <div className="flex items-center justify-start gap-3 text-xs">
-                          <span className="text-slate-500 dark:text-slate-400">
-                            Repartición: <span className={`font-semibold ${matches ? 'text-accent' : 'text-red-500 dark:text-red-400'}`}>
-                              {grandTotal.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
-                            </span>
-                          </span>
-                          <span className={`font-bold ${matches ? 'text-accent' : 'text-red-400'}`}>{matches ? '=' : '≠'}</span>
-                          <span className="text-slate-500 dark:text-slate-400">
-                            Ingresos: <span className="font-semibold text-slate-700 dark:text-slate-300">
-                              {ingresoTotal.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
-                            </span>
-                          </span>
-                        </div>
-                      </td>
-                      <td />
-                    </tr>
-                  </>
-                )
-              })()}
-            </tbody>
-          </table>
-        </div>
-        <div className="px-4 py-2.5 border-t border-slate-100 dark:border-slate-700">
-          <button
-            className={isSelectedMonthLocked ? 'hidden' : 'inline-flex items-center gap-1.5 text-xs text-accent hover:text-accent font-medium transition-colors'}
-            onClick={addDistRow}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-            </svg>
-            Agregar fila
-          </button>
-        </div>
-        <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-600 flex items-center justify-between">
-          <div className="text-xs text-slate-400 dark:text-slate-500 max-w-xs leading-snug">
-            Aplica los totales al mes <span className="font-medium text-slate-600 dark:text-slate-300">{MONTH_NAMES[months.find(m => m.id === selectedMonthId)?.month ?? 0] ?? ''}</span> en Cuentas y Power
-          </div>
-          <div className="flex items-center gap-3">
-            {applyResult === 'success' && (
-              <span className="text-xs text-accent font-medium">✓ Aplicado correctamente</span>
-            )}
-            {applyResult === 'error' && (
-              <span className="text-xs text-red-500 dark:text-red-400 font-medium">Error al aplicar</span>
-            )}
-            {(() => {
-              const selMonth = months.find(m => m.id === selectedMonthId)
-              if (!selMonth) return null
-              return selMonth.locked ? (
-                <button
-                  onClick={() => unlockMonth(selMonth.id)}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white transition-colors"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2H7V7a3 3 0 015.905-.75 1 1 0 001.937-.5A5.002 5.002 0 0010 2z" /></svg>
-                  Desbloquear mes
-                </button>
-              ) : (
-                <button
-                  onClick={() => lockMonth(selMonth.id)}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-200 transition-colors"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
-                  Bloquear mes
-                </button>
-              )
-            })()}
-            <button
-              onClick={applyReparticion}
-              disabled={applying || isSelectedMonthLocked}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold btn-primary transition-colors"
-            >
-              {applying ? (
-                <>
-                  <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                  </svg>
-                  Aplicando...
-                </>
-              ) : (
-                <>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd" />
-                  </svg>
-                  Aplicar a Cuentas y Power
-                </>
-              )}
-            </button>
           </div>
         </div>
       </div>
+
+      {/* Segmented tabs */}
+      <div className="flex gap-1 p-1 rounded-2xl" style={{background:'var(--bg2)'}}>
+        {([
+          {id:'cuenta' as const, label:'Cuentas & Flujo'},
+          {id:'data' as const, label:'Ingreso de data'},
+          {id:'dist' as const, label:'Distribución'},
+        ]).map(t => (
+          <button key={t.id} onClick={() => setView(t.id)}
+            className="flex-1 py-2 rounded-xl text-xs font-semibold transition-colors"
+            style={view === t.id
+              ? {background:'var(--surface)',color:'var(--t)',boxShadow:'0 1px 2px rgba(0,0,0,.06)'}
+              : {color:'var(--t3)',background:'transparent'}}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── POR CUENTA ────────────────────────────────────────────── */}
+      {view === 'cuenta' && (
+        <div className="space-y-3">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{color:'var(--t3)'}}>
+              Cuentas Scotiabank · {ACCOUNTS.length}
+            </p>
+            <div className="flex items-center gap-2">
+              {copyResult === 'success' && <span className="text-xs font-medium" style={{color:'var(--accent)'}}>✓ Copiado</span>}
+              {copyResult === 'error' && <span className="text-xs font-medium" style={{color:'var(--red)'}}>Error al copiar</span>}
+              {revertResult === 'success' && <span className="text-xs font-medium" style={{color:'var(--amber)'}}>✓ Revertido</span>}
+              {revertResult === 'error' && <span className="text-xs font-medium" style={{color:'var(--red)'}}>Error al revertir</span>}
+              {expenses.some(e => e.category === 'dist_applied') && (
+                <button onClick={revertReparticion} disabled={reverting}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium disabled:opacity-40 transition-colors"
+                  style={{background:'color-mix(in oklch, var(--red) 10%, transparent)',color:'var(--red)',border:'1px solid color-mix(in oklch, var(--red) 30%, transparent)'}}>
+                  {reverting ? 'Revirtiendo...' : 'Revertir aplicación'}
+                </button>
+              )}
+              {!isSelectedMonthLocked && (
+                <button onClick={copyFromPreviousMonth} disabled={copying || !getDisplayMonths(months, selectedMonthId)[1]}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium disabled:opacity-40 transition-colors"
+                  style={{background:'var(--bg2)',color:'var(--t2)',border:'1px solid var(--border)'}}>
+                  {copying ? 'Copiando...' : 'Copiar mes anterior'}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Grid */}
+          {loading ? (
+            <p className="text-sm" style={{color:'var(--t3)'}}>Cargando...</p>
+          ) : (
+            <>
+              <div className="rounded-2xl p-3" style={{background:'var(--surface)',border:'1px solid var(--border)'}}>
+              <div className="grid grid-cols-2 gap-3">
+                {ACCOUNTS.map(acc => {
+                  const amt = acc.key === 'power' ? powerTotal : (byAccount[acc.key] ?? 0)
+                  const applied = acc.key === 'power' ? 0 : (appliedByAccount[acc.key] ?? 0)
+                  const isEditing = editingAccountKey === acc.key
+                  return (
+                    <div key={acc.key} className="rounded-2xl p-3 flex flex-col gap-1.5" style={{background:'color-mix(in oklch, var(--asoft) 45%, var(--surface))'}}>
+                      {/* Header row: label + applied badge */}
+                      <div className="flex items-center justify-between gap-1 min-w-0">
+                        <p className="text-xs font-semibold truncate" style={{color:'var(--atext)'}}>{acc.label}</p>
+                        {applied > 0 && (
+                          <span className="font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded flex-shrink-0"
+                            style={{background:'color-mix(in oklch, var(--accent) 15%, transparent)',color:'var(--atext)'}}>
+                            +{fmt(applied)}
+                          </span>
+                        )}
+                      </div>
+                      {/* Main editable amount */}
+                      {acc.key === 'power' ? (
+                        <p className="font-mono text-sm font-bold" style={{color:'var(--t)'}}>{fmt(powerTotal)}</p>
+                      ) : isEditing ? (
+                        <input autoFocus type="number" step="0.01"
+                          className="w-full rounded-lg px-2 py-0.5 text-sm font-bold"
+                          style={{border:'1px solid var(--accent)',background:'var(--surface)',color:'var(--t)',outline:'none'}}
+                          value={editAccountValue}
+                          onChange={e => setEditAccountValue(e.target.value)}
+                          onBlur={() => saveAccountAmount(acc.key)}
+                          onKeyDown={e => { if (e.key === 'Enter') saveAccountAmount(acc.key); if (e.key === 'Escape') setEditingAccountKey(null) }}
+                        />
+                      ) : (
+                        <p className={`font-mono text-sm font-bold${isSelectedMonthLocked ? '' : ' cursor-pointer'}`}
+                          style={{color:'var(--t)'}}
+                          onClick={() => { if (isSelectedMonthLocked) return; setEditingAccountKey(acc.key); setEditAccountValue(amt.toString()) }}>
+                          {fmt(amt)}
+                        </p>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── INGRESO DE DATA ───────────────────────────────────────── */}
+      {view === 'data' && (() => {
+        const displayMonths = getDisplayMonths(months, selectedMonthId)
+        const prevM = displayMonths[1]
+        const fmtC = (n: number) => n >= 1000 ? `S/ ${(n/1000).toFixed(1)}k` : `S/ ${Math.round(n)}`
+        const totalInc = INCOME_SOURCES.reduce((s, {key}) => s + (incomeByMonth[selectedMonthId]?.[key]?.amount ?? 0), 0)
+
+        return (
+          <div className="space-y-4">
+
+            {/* Ingresos */}
+            <div className="rounded-2xl overflow-hidden" style={{background:'var(--surface)',border:'1px solid var(--border)'}}>
+              <div className="px-4 py-2.5 flex items-center justify-between cursor-pointer select-none" style={{borderBottom: incomeOpen ? '1px solid var(--border)' : 'none'}} onClick={() => setIncomeOpen(o => !o)}>
+                <div className="flex items-center gap-1.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 flex-shrink-0 transition-transform" style={{color:'var(--t3)', transform: incomeOpen ? 'rotate(90deg)' : 'rotate(0deg)'}} viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd"/>
+                  </svg>
+                  <div>
+                    <p className="text-xs font-semibold" style={{color:'var(--t)'}}>Ingresos</p>
+                    <p className="text-[10px]" style={{color:'var(--t3)'}}>{selMonth ? MONTH_NAMES[selMonth.month] : ''}</p>
+                  </div>
+                </div>
+                <span className="font-mono text-xs font-semibold" style={{color:'var(--accent)'}}>{fmtC(totalInc)}</span>
+              </div>
+              {incomeOpen && (<><div>
+                  {INCOME_SOURCES.map(({key, label}, idx) => {
+                    const entry  = incomeByMonth[selectedMonthId]?.[key]
+                    const cur    = entry?.amount ?? 0
+                    const prev   = prevM ? (incomeByMonth[prevM.id]?.[key]?.amount ?? 0) : 0
+                    const delta  = cur - prev
+                    const isEditing    = editingCell?.monthId === selectedMonthId && editingCell?.source === key
+                    const isEditingCmt = editingComment?.monthId === selectedMonthId && editingComment?.source === key
+                    const hasComment   = key === 'otros_ingresos' && !!entry?.description
+                    return (
+                      <div key={key} className="px-4 py-2.5" style={idx > 0 ? {borderTop:'1px solid var(--border)'} : {}}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-xs font-medium" style={{color:'var(--t)'}}>{label}</span>
+                            {key === 'otros_ingresos' && (
+                              isEditingCmt ? (
+                                <input autoFocus type="text"
+                                  className="w-36 rounded px-2 py-0.5 text-xs"
+                                  style={{border:'1px solid var(--amber)',background:'var(--surface)',color:'var(--t)',outline:'none'}}
+                                  value={editCommentValue} placeholder="Comentario..."
+                                  onChange={e => setEditCommentValue(e.target.value)}
+                                  onBlur={() => saveIncomeComment(selectedMonthId, key)}
+                                  onKeyDown={e => { if (e.key === 'Enter') saveIncomeComment(selectedMonthId, key); if (e.key === 'Escape') setEditingComment(null) }}
+                                />
+                              ) : hasComment ? (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded cursor-pointer truncate max-w-[120px]"
+                                  style={{background:'color-mix(in oklch, var(--amber) 15%, transparent)',color:'var(--amber)'}}
+                                  onClick={() => { if (isSelectedMonthLocked) return; setEditingComment({monthId:selectedMonthId,source:key}); setEditCommentValue(entry?.description ?? '') }}>
+                                  {entry!.description}
+                                </span>
+                              ) : !isSelectedMonthLocked ? (
+                                <button className="text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover/inc:opacity-100"
+                                  style={{color:'var(--t3)'}}
+                                  onClick={() => { setEditingComment({monthId:selectedMonthId,source:key}); setEditCommentValue('') }}>
+                                  + nota
+                                </button>
+                              ) : null
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            {prevM && delta !== 0 && !isEditing && (
+                              <span className="font-mono text-[10px] px-1.5 py-0.5 rounded" style={{
+                                background: delta < 0
+                                  ? 'color-mix(in oklch, var(--red) 12%, transparent)'
+                                  : 'color-mix(in oklch, oklch(55% 0.14 155) 15%, transparent)',
+                                color: delta < 0 ? 'var(--red)' : 'oklch(45% 0.14 155)',
+                              }}>
+                                {delta > 0 ? '↑' : '↓'} {fmtAmt(Math.abs(delta))}
+                              </span>
+                            )}
+                            {isEditing ? (
+                              <input autoFocus type="number" step="0.01"
+                                className="w-28 rounded-lg px-2 py-0.5 text-sm font-semibold text-right"
+                                style={{border:'1px solid var(--accent)',background:'var(--surface)',color:'var(--t)',outline:'none'}}
+                                value={editCellValue}
+                                onChange={e => setEditCellValue(e.target.value)}
+                                onBlur={() => saveIncomeCell(selectedMonthId, key)}
+                                onKeyDown={e => { if (e.key === 'Enter') saveIncomeCell(selectedMonthId, key); if (e.key === 'Escape') setEditingCell(null) }}
+                              />
+                            ) : (
+                              <span
+                                className={isSelectedMonthLocked ? '' : 'cursor-pointer'}
+                                style={{color:'var(--t)',fontFamily:'var(--font-mono,monospace)',fontSize:13,fontWeight:700,minWidth:72,textAlign:'right',display:'inline-block'}}
+                                onClick={() => { if (isSelectedMonthLocked) return; setEditingCell({monthId:selectedMonthId,source:key}); setEditCellValue(cur.toString()) }}>
+                                {fmt(cur)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+                <div className="px-4 py-2.5 flex items-center justify-between" style={{borderTop:'1px solid var(--border)',background:'var(--bg2)'}}>
+                  <span className="text-xs font-semibold uppercase tracking-wide" style={{color:'var(--t2)'}}>Total Ingresos</span>
+                  <span className="font-mono text-xs font-semibold" style={{color:'var(--t)'}}>{fmt(totalInc)}</span>
+                </div>
+              </>)}
+            </div>
+
+            {/* Gastos presupuestados */}
+            {(() => {
+              const totalGas = gastoRows.reduce((s, lbl) => s + (gastosByMonth[selectedMonthId]?.[lbl]?.amount ?? 0), 0)
+              return (
+                <div className="rounded-2xl overflow-hidden" style={{background:'var(--surface)',border:'1px solid var(--border)'}}>
+                  <div className="px-4 py-2.5 flex items-center justify-between cursor-pointer select-none" style={{borderBottom: gastosOpen ? '1px solid var(--border)' : 'none'}} onClick={() => setGastosOpen(o => !o)}>
+                    <div className="flex items-center gap-1.5">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 flex-shrink-0 transition-transform" style={{color:'var(--t3)', transform: gastosOpen ? 'rotate(90deg)' : 'rotate(0deg)'}} viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd"/>
+                      </svg>
+                      <div>
+                        <p className="text-xs font-semibold" style={{color:'var(--t)'}}>Gastos presupuestados</p>
+                        <p className="text-[10px]" style={{color:'var(--t3)'}}>{selMonth ? MONTH_NAMES[selMonth.month] : ''}</p>
+                      </div>
+                    </div>
+                    <span className="font-mono text-xs font-semibold" style={{color:'var(--accent)'}}>{fmtC(totalGas)}</span>
+                  </div>
+                  {gastosOpen && (<><div>
+                      {gastoRows.map((lbl, idx) => {
+                        const cur  = gastosByMonth[selectedMonthId]?.[lbl]?.amount ?? 0
+                        const prev = prevM ? (gastosByMonth[prevM.id]?.[lbl]?.amount ?? 0) : 0
+                        const delta = cur - prev
+                        const displayLabel = lbl.startsWith('__new_') ? '' : lbl
+                        const isEditingCell  = editingGastoCell?.monthId === selectedMonthId && editingGastoCell?.label === lbl
+                        const isEditingLabel = editingGastoLabel === lbl
+                        return (
+                          <div key={lbl} className="px-4 py-2.5" style={idx > 0 ? {borderTop:'1px solid var(--border)'} : {}}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5 min-w-0 flex-1 pr-2">
+                                {isEditingLabel ? (
+                                  <input autoFocus type="text"
+                                    className="w-full rounded-lg px-2 py-0.5 text-xs"
+                                    style={{border:'1px solid var(--accent)',background:'var(--surface)',color:'var(--t)',outline:'none'}}
+                                    value={editGastoLabelValue} placeholder="Nombre del gasto..."
+                                    onChange={e => setEditGastoLabelValue(e.target.value)}
+                                    onBlur={() => saveGastoLabel(lbl)}
+                                    onKeyDown={e => { if (e.key === 'Enter') saveGastoLabel(lbl); if (e.key === 'Escape') { if (lbl.startsWith('__new_')) setGastoRows(prev => prev.filter(l => l !== lbl)); setEditingGastoLabel(null) } }}
+                                  />
+                                ) : (
+                                  <span className="text-xs font-medium truncate cursor-pointer" style={{color:'var(--t)'}}
+                                    onClick={() => { setEditingGastoLabel(lbl); setEditGastoLabelValue(displayLabel) }}>
+                                    {displayLabel || <em className="font-normal" style={{color:'var(--t3)'}}>Sin nombre</em>}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1.5 flex-shrink-0">
+                                {prevM && delta !== 0 && !isEditingCell && (
+                                  <span className="font-mono text-[10px] px-1.5 py-0.5 rounded" style={{
+                                    background: delta > 0
+                                      ? 'color-mix(in oklch, var(--red) 12%, transparent)'
+                                      : 'color-mix(in oklch, oklch(55% 0.14 155) 15%, transparent)',
+                                    color: delta > 0 ? 'var(--red)' : 'oklch(45% 0.14 155)',
+                                  }}>
+                                    {delta > 0 ? '↑' : '↓'} {fmtAmt(Math.abs(delta))}
+                                  </span>
+                                )}
+                                {isEditingCell ? (
+                                  <input autoFocus type="number" step="0.01"
+                                    className="w-28 rounded-lg px-2 py-0.5 text-sm font-semibold text-right"
+                                    style={{border:'1px solid var(--accent)',background:'var(--surface)',color:'var(--t)',outline:'none'}}
+                                    value={editGastoCellValue}
+                                    onChange={e => setEditGastoCellValue(e.target.value)}
+                                    onBlur={() => saveGastoCell(selectedMonthId, lbl)}
+                                    onKeyDown={e => { if (e.key === 'Enter') saveGastoCell(selectedMonthId, lbl); if (e.key === 'Escape') setEditingGastoCell(null) }}
+                                  />
+                                ) : (
+                                  <span
+                                    className={isSelectedMonthLocked ? '' : 'cursor-pointer'}
+                                    style={{color:'var(--t)',fontFamily:'var(--font-mono,monospace)',fontSize:13,fontWeight:700,minWidth:72,textAlign:'right',display:'inline-block'}}
+                                    onClick={() => { if (isSelectedMonthLocked) return; setEditingGastoCell({monthId:selectedMonthId,label:lbl}); setEditGastoCellValue(cur.toString()) }}>
+                                    {fmt(cur)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <div className="px-4 py-2.5 flex items-center justify-between" style={{borderTop:'1px solid var(--border)',background:'var(--bg2)'}}>
+                      <button className="inline-flex items-center gap-1.5 text-xs font-medium" style={{color:'var(--accent)'}} onClick={addGastoRow}>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd"/></svg>
+                        Agregar fila
+                      </button>
+                      <span className="font-mono text-xs font-semibold" style={{color:'var(--t)'}}>{fmt(totalGas)}</span>
+                    </div>
+                  </>)}
+                </div>
+              )
+            })()}
+
+            {/* Deudas */}
+            {(() => {
+              const totalDeu = deudaRows.reduce((s, lbl) => s + (deudasByMonth[selectedMonthId]?.[lbl]?.amount ?? 0), 0)
+              return (
+                <div className="rounded-2xl overflow-hidden" style={{background:'var(--surface)',border:'1px solid var(--border)'}}>
+                  <div className="px-4 py-2.5 flex items-center justify-between cursor-pointer select-none" style={{borderBottom: deudasOpen ? '1px solid var(--border)' : 'none'}} onClick={() => setDeudasOpen(o => !o)}>
+                    <div className="flex items-center gap-1.5">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 flex-shrink-0 transition-transform" style={{color:'var(--t3)', transform: deudasOpen ? 'rotate(90deg)' : 'rotate(0deg)'}} viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd"/>
+                      </svg>
+                      <div>
+                        <p className="text-xs font-semibold" style={{color:'var(--t)'}}>Deudas</p>
+                        <p className="text-[10px]" style={{color:'var(--t3)'}}>{selMonth ? MONTH_NAMES[selMonth.month] : ''}</p>
+                      </div>
+                    </div>
+                    <span className="font-mono text-xs font-semibold" style={{color:'var(--accent)'}}>{fmtC(totalDeu)}</span>
+                  </div>
+                  {deudasOpen && (<><div>
+                      {deudaRows.map((lbl, idx) => {
+                        const cur  = deudasByMonth[selectedMonthId]?.[lbl]?.amount ?? 0
+                        const prev = prevM ? (deudasByMonth[prevM.id]?.[lbl]?.amount ?? 0) : 0
+                        const delta = cur - prev
+                        const displayLabel   = lbl.startsWith('__new_') ? '' : lbl
+                        const isEditingCell  = editingDeudaCell?.monthId === selectedMonthId && editingDeudaCell?.label === lbl
+                        const isEditingLabel = editingDeudaLabel === lbl
+                        return (
+                          <div key={lbl} className="px-4 py-2.5" style={idx > 0 ? {borderTop:'1px solid var(--border)'} : {}}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5 min-w-0 flex-1 pr-2">
+                                {isEditingLabel ? (
+                                  <input autoFocus type="text"
+                                    className="w-full rounded-lg px-2 py-0.5 text-xs"
+                                    style={{border:'1px solid var(--accent)',background:'var(--surface)',color:'var(--t)',outline:'none'}}
+                                    value={editDeudaLabelValue} placeholder="Nombre de deuda..."
+                                    onChange={e => setEditDeudaLabelValue(e.target.value)}
+                                    onBlur={() => saveDeudaLabel(lbl)}
+                                    onKeyDown={e => { if (e.key === 'Enter') saveDeudaLabel(lbl); if (e.key === 'Escape') { if (lbl.startsWith('__new_')) setDeudaRows(prev => prev.filter(l => l !== lbl)); setEditingDeudaLabel(null) } }}
+                                  />
+                                ) : (
+                                  <span className="text-xs font-medium truncate cursor-pointer" style={{color:'var(--t)'}}
+                                    onClick={() => { setEditingDeudaLabel(lbl); setEditDeudaLabelValue(displayLabel) }}>
+                                    {displayLabel || <em className="font-normal" style={{color:'var(--t3)'}}>Sin nombre</em>}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1.5 flex-shrink-0">
+                                {prevM && delta !== 0 && !isEditingCell && (
+                                  <span className="font-mono text-[10px] px-1.5 py-0.5 rounded" style={{
+                                    background: delta > 0
+                                      ? 'color-mix(in oklch, var(--red) 12%, transparent)'
+                                      : 'color-mix(in oklch, oklch(55% 0.14 155) 15%, transparent)',
+                                    color: delta > 0 ? 'var(--red)' : 'oklch(45% 0.14 155)',
+                                  }}>
+                                    {delta > 0 ? '↑' : '↓'} {fmtAmt(Math.abs(delta))}
+                                  </span>
+                                )}
+                                {isEditingCell ? (
+                                  <input autoFocus type="number" step="0.01"
+                                    className="w-28 rounded-lg px-2 py-0.5 text-sm font-semibold text-right"
+                                    style={{border:'1px solid var(--accent)',background:'var(--surface)',color:'var(--t)',outline:'none'}}
+                                    value={editDeudaCellValue}
+                                    onChange={e => setEditDeudaCellValue(e.target.value)}
+                                    onBlur={() => saveDeudaCell(selectedMonthId, lbl)}
+                                    onKeyDown={e => { if (e.key === 'Enter') saveDeudaCell(selectedMonthId, lbl); if (e.key === 'Escape') setEditingDeudaCell(null) }}
+                                  />
+                                ) : (
+                                  <span
+                                    className={isSelectedMonthLocked ? '' : 'cursor-pointer'}
+                                    style={{color:'var(--t)',fontFamily:'var(--font-mono,monospace)',fontSize:13,fontWeight:700,minWidth:72,textAlign:'right',display:'inline-block'}}
+                                    onClick={() => { if (isSelectedMonthLocked) return; setEditingDeudaCell({monthId:selectedMonthId,label:lbl}); setEditDeudaCellValue(cur.toString()) }}>
+                                    {fmt(cur)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <div className="px-4 py-2.5 flex items-center justify-between" style={{borderTop:'1px solid var(--border)',background:'var(--bg2)'}}>
+                      <button className="inline-flex items-center gap-1.5 text-xs font-medium" style={{color:'var(--accent)'}} onClick={addDeudaRow}>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd"/></svg>
+                        Agregar fila
+                      </button>
+                      <span className="font-mono text-xs font-semibold" style={{color:'var(--t)'}}>{fmt(totalDeu)}</span>
+                    </div>
+                  </>)}
+                </div>
+              )
+            })()}
+
+          </div>
+        )
+      })()}
+
+
+      {/* ── DISTRIBUCIÓN ──────────────────────────────────────────── */}
+      {view === 'dist' && (() => {
+        const ingresoTotal = (['julio', 'flor'] as const).reduce((sum, src) => sum + (incomeByMonth[selectedMonthId]?.[src]?.amount ?? 0), 0)
+        const sobrante = ingresoTotal
+          - gastoRows.reduce((sum, l) => sum + (gastosByMonth[selectedMonthId]?.[l]?.amount ?? 0), 0)
+          - deudaRows.reduce((sum, l) => sum + (deudasByMonth[selectedMonthId]?.[l]?.amount ?? 0), 0)
+
+        const destinos = DIST_COLS.map(c => {
+          const fromRows = distRows.reduce((sum, row) => {
+            const autoVal = getAutoDistValue(row.gasto_egreso, c.key)
+            return sum + (autoVal !== null ? autoVal : (row[c.key] ?? 0))
+          }, 0)
+          const total = c.key === 'power' ? fromRows + sobrante : fromRows
+          const n = distRows.filter(row => {
+            const autoVal = getAutoDistValue(row.gasto_egreso, c.key)
+            return (autoVal !== null ? autoVal : (row[c.key] ?? 0)) > 0
+          }).length + (c.key === 'power' && sobrante > 0 ? 1 : 0)
+          return { ...c, total, n, color: DIST_COL_COLORS[c.key] ?? 'var(--accent)' }
+        })
+        const sorted = [...destinos].sort((a, b) => b.total - a.total)
+        const grandTotal = destinos.reduce((s, d) => s + d.total, 0)
+        const maxT = Math.max(...destinos.map(d => d.total), 1)
+        const matches = Math.abs(grandTotal - ingresoTotal) < 0.01
+
+        return (
+          <div className="space-y-3">
+
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-semibold uppercase tracking-widest" style={{color:'var(--t3)'}}>
+                Distribución · {DIST_COLS.length} destinos
+              </p>
+              <span className="text-xs font-mono font-semibold" style={{color:'var(--accent)'}}>{fmt(grandTotal)}</span>
+            </div>
+
+            {/* Proportion bar */}
+            <div className="rounded-2xl p-4" style={{background:'var(--surface)',border:'1px solid var(--border)'}}>
+              <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{color:'var(--t3)'}}>Proporción del mes</p>
+              <div style={{height:18,borderRadius:9,overflow:'hidden',display:'flex',background:'var(--bg2)'}}>
+                {sorted.filter(d => d.total > 0).map(d => (
+                  <div key={d.key} title={`${d.label}: ${fmt(d.total)}`}
+                    style={{width:`${(d.total / grandTotal) * 100}%`, background: d.color, opacity: 0.85}}/>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-2 mt-3">
+                {sorted.filter(d => d.total > 0).map(d => (
+                  <div key={d.key} className="flex items-center gap-1.5">
+                    <div style={{width:8,height:8,borderRadius:2,background:d.color}}/>
+                    <span className="text-[11px]" style={{color:'var(--t2)'}}>{d.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Destino cards */}
+            <div className="space-y-1.5">
+              {sorted.map(d => {
+                const empty = d.total <= 0
+                const isOpen = openDestinos.has(d.key)
+                const toggle = () => {
+                  if (empty) return
+                  setOpenDestinos(prev => {
+                    const next = new Set(prev)
+                    next.has(d.key) ? next.delete(d.key) : next.add(d.key)
+                    return next
+                  })
+                }
+
+                // rows that contribute to this destino
+                const contributing: { label: string; amount: number; isAuto: boolean }[] = distRows
+                  .map(row => {
+                    const autoVal = getAutoDistValue(row.gasto_egreso, d.key)
+                    const amount = autoVal !== null ? autoVal : (row[d.key] ?? 0)
+                    return { label: row.gasto_egreso || 'Sin nombre', amount, isAuto: autoVal !== null }
+                  })
+                  .filter(r => r.amount > 0)
+                if (d.key === 'power' && sobrante > 0) {
+                  contributing.push({ label: 'Sobrante del mes', amount: sobrante, isAuto: true })
+                }
+
+                return (
+                  <div key={d.key} className="rounded-2xl overflow-hidden"
+                    style={{background:'var(--surface)',border:'1px solid var(--border)',opacity:empty ? 0.5 : 1}}>
+                    {/* Header row */}
+                    <div className={`px-3 py-2.5 flex items-center gap-2 ${!empty ? 'cursor-pointer select-none' : ''}`}
+                      onClick={toggle}>
+                      {!empty && (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 flex-shrink-0 transition-transform"
+                          style={{color:'var(--t3)', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)'}}
+                          viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd"/>
+                        </svg>
+                      )}
+                      {empty && <div style={{width:12}}/>}
+                      <div style={{width:10,height:10,borderRadius:3,flexShrink:0,background:d.color}}/>
+                      <span className="text-sm font-semibold flex-1" style={{color:'var(--t)'}}>{d.label}</span>
+                      {!empty && (
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded"
+                          style={{background:'var(--bg2)',color:'var(--t3)'}}>
+                          {d.n} gasto{d.n !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                      <span className="font-mono text-sm font-semibold" style={{color: empty ? 'var(--t3)' : 'var(--t)'}}>
+                        {empty ? '—' : fmt(d.total)}
+                      </span>
+                    </div>
+                    {/* Progress bar (always visible when non-empty) */}
+                    {!empty && (
+                      <div className="px-3 pb-2.5" style={{marginTop:-6}}>
+                        <div style={{height:3,borderRadius:2,background:'var(--bg2)',overflow:'hidden'}}>
+                          <div style={{height:'100%',width:`${(d.total / maxT) * 100}%`,background:d.color,opacity:.7}}/>
+                        </div>
+                      </div>
+                    )}
+                    {/* Expanded gastos list */}
+                    {isOpen && contributing.length > 0 && (
+                      <div style={{borderTop:'1px solid var(--border)'}}>
+                        {contributing.map((r, i) => (
+                          <div key={i} className="flex items-center justify-between px-4 py-2"
+                            style={{borderTop: i > 0 ? '1px solid var(--border)' : 'none', background:'var(--bg2)'}}>
+                            <div className="flex items-center gap-2 min-w-0">
+                              {r.isAuto && (
+                                <div style={{width:5,height:5,borderRadius:'50%',flexShrink:0,background:d.color,opacity:.7}}/>
+                              )}
+                              <span className="text-xs truncate" style={{color:'var(--t2)'}}>{r.label}</span>
+                            </div>
+                            <span className="font-mono text-xs font-medium flex-shrink-0 ml-3" style={{color:'var(--t)'}}>
+                              {fmt(r.amount)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Balance check */}
+            <div className="rounded-2xl px-4 py-3" style={{
+              background: matches ? 'color-mix(in oklch, var(--accent) 8%, transparent)' : 'color-mix(in oklch, var(--red) 8%, transparent)',
+              border: `1px solid ${matches ? 'color-mix(in oklch, var(--accent) 25%, transparent)' : 'color-mix(in oklch, var(--red) 25%, transparent)'}`,
+            }}>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
+                <span className="font-semibold" style={{color: matches ? 'var(--accent)' : 'var(--red)'}}>
+                  {matches ? '✓ Cuadra' : '✗ No cuadra'}
+                </span>
+                <span style={{color:'var(--t3)'}}>
+                  Repartición: <span className="font-semibold" style={{color: matches ? 'var(--accent)' : 'var(--red)'}}>{fmt(grandTotal)}</span>
+                </span>
+                <span className="font-bold" style={{color: matches ? 'var(--accent)' : 'var(--red)'}}>{matches ? '=' : '≠'}</span>
+                <span style={{color:'var(--t3)'}}>
+                  Ingresos: <span className="font-semibold" style={{color:'var(--t)'}}>{fmt(ingresoTotal)}</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Edit table (collapsible) */}
+            <details className="group">
+              <summary className="cursor-pointer list-none flex items-center gap-1.5 py-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 flex-shrink-0 transition-transform group-open:rotate-90" style={{color:'var(--t3)'}} viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd"/>
+                </svg>
+                <span className="text-[10px] font-semibold uppercase tracking-widest" style={{color:'var(--t3)'}}>Editar distribución</span>
+                {distLoading && <span className="text-xs" style={{color:'var(--t3)'}}>Cargando...</span>}
+              </summary>
+              <div className="rounded-2xl overflow-hidden mt-2" style={{background:'var(--surface)',border:'1px solid var(--border)'}}>
+                <div className="overflow-x-auto md:max-h-[60vh] md:overflow-y-auto">
+                  <table className="text-xs table-fixed w-full" style={{minWidth: `${192 + DIST_COLS.length * 112 + 32}px`}}>
+                    <colgroup>
+                      <col className="w-48" />
+                      {DIST_COLS.map(c => <col key={c.key} className="w-28" />)}
+                      <col className="w-8" />
+                    </colgroup>
+                    <thead className="sticky top-0 z-10">
+                      <tr style={{background:'var(--bg2)',borderBottom:'1px solid var(--border)'}}>
+                        <th className="text-left px-3 py-2 font-medium sticky left-0 z-20" style={{color:'var(--t3)',background:'var(--bg2)',borderRight:'1px solid var(--border)'}}>GASTO/EGRESO</th>
+                        {DIST_COLS.map(c => (
+                          <th key={c.key} className="text-right px-3 py-2 font-medium whitespace-nowrap uppercase" style={{color:'var(--t3)'}}>{c.label}</th>
+                        ))}
+                        <th className="px-3 py-2" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {distRows.map(row => (
+                        <tr key={row.id} className="group/dist transition-colors" style={{borderBottom:'1px solid var(--border)'}}
+                          onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--bg2)'}
+                          onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}>
+                          <td className="sticky left-0 z-10 px-4 py-2 min-w-[192px]" style={{background:'inherit',borderRight:'1px solid var(--border)'}}>
+                            {editingDistCell?.rowId === row.id && editingDistCell.field === 'gasto_egreso' ? (
+                              <input autoFocus type="text"
+                                className="w-full min-w-0 rounded-lg px-2 py-0.5 text-sm"
+                                style={{border:'1px solid var(--accent)',background:'var(--surface)',color:'var(--t)',outline:'none'}}
+                                value={editDistCellValue}
+                                onChange={e => setEditDistCellValue(e.target.value)}
+                                onBlur={() => commitDistCell(row.id, 'gasto_egreso', editDistCellValue)}
+                                onKeyDown={e => { if (e.key === 'Enter') commitDistCell(row.id, 'gasto_egreso', editDistCellValue); if (e.key === 'Escape') setEditingDistCell(null) }}
+                              />
+                            ) : (
+                              <span className={isSelectedMonthLocked ? '' : 'cursor-pointer font-medium'}
+                                style={{color: isSelectedMonthLocked ? 'var(--t3)' : 'var(--t)'}}
+                                onClick={() => { if (isSelectedMonthLocked) return; setEditingDistCell({ rowId: row.id, field: 'gasto_egreso' }); setEditDistCellValue(row.gasto_egreso) }}>
+                                {row.gasto_egreso || <em className="font-normal" style={{color:'var(--t3)'}}>Sin nombre</em>}
+                              </span>
+                            )}
+                          </td>
+                          {DIST_COLS.map(c => {
+                            const autoVal = getAutoDistValue(row.gasto_egreso, c.key)
+                            const isAuto = autoVal !== null
+                            const effectiveVal = isAuto ? autoVal : (row[c.key] ?? 0)
+                            return (
+                              <td key={c.key} className="px-4 py-2 text-right">
+                                {isAuto ? (
+                                  <span style={{color: effectiveVal > 0 ? 'var(--accent)' : 'var(--t3)',fontWeight:500}}>
+                                    {effectiveVal > 0 ? effectiveVal.toLocaleString('es-PE', { minimumFractionDigits: 2 }) : '—'}
+                                  </span>
+                                ) : editingDistCell?.rowId === row.id && editingDistCell.field === c.key ? (
+                                  <input autoFocus type="number" step="0.01"
+                                    className="w-full min-w-0 rounded px-2 py-0.5 text-sm text-right font-medium"
+                                    style={{border:'1px solid var(--accent)',background:'var(--surface)',color:'var(--t)',outline:'none'}}
+                                    value={editDistCellValue}
+                                    onChange={e => setEditDistCellValue(e.target.value)}
+                                    onBlur={() => commitDistCell(row.id, c.key, editDistCellValue)}
+                                    onKeyDown={e => { if (e.key === 'Enter') commitDistCell(row.id, c.key, editDistCellValue); if (e.key === 'Escape') setEditingDistCell(null) }}
+                                  />
+                                ) : (
+                                  <span className={isSelectedMonthLocked ? '' : 'cursor-pointer'} style={{color: isSelectedMonthLocked ? 'var(--t3)' : effectiveVal > 0 ? 'var(--t)' : 'var(--t3)',fontWeight:500}}
+                                    onClick={() => { if (isSelectedMonthLocked) return; setEditingDistCell({ rowId: row.id, field: c.key }); setEditDistCellValue(effectiveVal === 0 ? '' : effectiveVal.toString()) }}>
+                                    {effectiveVal > 0 ? effectiveVal.toLocaleString('es-PE', { minimumFractionDigits: 2 }) : '—'}
+                                  </span>
+                                )}
+                              </td>
+                            )
+                          })}
+                          <td className="px-2 py-2">
+                            <button onClick={() => { if (isSelectedMonthLocked) return; deleteDistRow(row) }}
+                              className={`opacity-0 group-hover/dist:opacity-100 transition-opacity ${isSelectedMonthLocked ? 'hidden' : ''}`}
+                              style={{color:'var(--t3)'}}>
+                              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                              </svg>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {/* Sobrante row */}
+                      <tr style={{borderTop:'1px solid var(--border)',background:'color-mix(in oklch, var(--amber) 8%, transparent)'}}>
+                        <td className="sticky left-0 z-10 px-4 py-2 font-medium text-xs" style={{background:'color-mix(in oklch, var(--amber) 8%, transparent)',borderRight:'1px solid var(--border)',color:'var(--amber)'}}>Sobrante</td>
+                        {DIST_COLS.map(c => (
+                          <td key={c.key} className="px-4 py-2 text-right">
+                            {c.key === 'power' ? (
+                              <span className="font-medium text-xs" style={{color: sobrante >= 0 ? 'var(--amber)' : 'var(--red)'}}>
+                                {sobrante.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                              </span>
+                            ) : <span style={{color:'var(--t3)'}}>—</span>}
+                          </td>
+                        ))}
+                        <td />
+                      </tr>
+                      {/* Totals row */}
+                      <tr style={{background:'var(--bg2)',borderTop:'2px solid var(--border)'}}>
+                        <td className="sticky left-0 z-20 px-4 py-2 font-semibold uppercase text-xs tracking-wide" style={{background:'var(--bg2)',borderRight:'1px solid var(--border)',color:'var(--t2)'}}>TOTAL</td>
+                        {destinos.map(d => (
+                          <td key={d.key} className="px-4 py-2 text-right font-semibold text-xs" style={{color:'var(--t)'}}>
+                            {d.total.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                          </td>
+                        ))}
+                        <td />
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div className="px-4 py-2.5" style={{borderTop:'1px solid var(--border)'}}>
+                  <button className={`inline-flex items-center gap-1.5 text-xs font-medium ${isSelectedMonthLocked ? 'hidden' : ''}`}
+                    style={{color:'var(--accent)'}} onClick={addDistRow}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>
+                    Agregar fila
+                  </button>
+                </div>
+              </div>
+            </details>
+
+            {/* Apply / lock buttons */}
+            <div className="flex items-center justify-between gap-3 pt-1">
+              <div className="text-xs leading-snug" style={{color:'var(--t3)'}}>
+                Aplica los totales al mes <span className="font-medium" style={{color:'var(--t)'}}>{MONTH_NAMES[months.find(m => m.id === selectedMonthId)?.month ?? 0] ?? ''}</span> en Cuentas y Power
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {applyResult === 'success' && <span className="text-xs font-medium" style={{color:'var(--accent)'}}>✓ Aplicado</span>}
+                {applyResult === 'error' && <span className="text-xs font-medium" style={{color:'var(--red)'}}>Error</span>}
+                {(() => {
+                  const selMo = months.find(m => m.id === selectedMonthId)
+                  if (!selMo) return null
+                  return selMo.locked ? (
+                    <button onClick={() => unlockMonth(selMo.id)}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-white"
+                      style={{background:'var(--amber)'}}>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2H7V7a3 3 0 015.905-.75 1 1 0 001.937-.5A5.002 5.002 0 0010 2z" /></svg>
+                      Desbloquear
+                    </button>
+                  ) : (
+                    <button onClick={() => lockMonth(selMo.id)}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold"
+                      style={{background:'var(--bg2)',color:'var(--t2)',border:'1px solid var(--border)'}}>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
+                      Bloquear
+                    </button>
+                  )
+                })()}
+                <button onClick={applyReparticion} disabled={applying || isSelectedMonthLocked}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold btn-primary transition-colors disabled:opacity-50">
+                  {applying ? (
+                    <>
+                      <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                      </svg>
+                      Aplicando...
+                    </>
+                  ) : (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd" />
+                      </svg>
+                      Aplicar a Cuentas y Power
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+          </div>
+        )
+      })()}
 
     </div>
   )

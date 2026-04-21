@@ -110,6 +110,7 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
   const [showForm, setShowForm] = useState(false)
   const [editExpense, setEditExpense] = useState<PersonalExpense | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [modalKey, setModalKey] = useState(0)
   const [saving, setSaving] = useState(false)
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -247,6 +248,7 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
     if (andAnother) {
       setEditExpense(null)
       setForm({ ...EMPTY_FORM, date: form.date, splits: [makeSplit()], category: '', subcategory: '' })
+      setModalKey(k => k + 1)
     } else {
       setShowForm(false)
     }
@@ -293,6 +295,13 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
   const months = Array.from(new Set([currentMonth, ...expenses.map(e => new Date(e.date + 'T00:00:00').getMonth() + 1)])).sort()
   const regDates = Array.from(new Set(expenses.map(e => e.created_at?.slice(0, 10)).filter(Boolean) as string[])).sort().reverse()
 
+  const CAT_COLORS: Record<string, string> = {
+    hogar: '#6366f1', alimentacion: '#10b981', transporte: '#f59e0b',
+    trabajo: '#6366f1', finanzas: '#f43f5e', compras: '#8b5cf6',
+    entretenimiento: '#ec4899', salud: '#14b8a6', educacion: '#06b6d4',
+    viajes: '#0ea5e9', familia: '#fb923c', otros: '#94a3b8',
+  }
+
   const CLAS_STYLES = {
     personal:         { bg: 'bg-purple-100 dark:bg-purple-900/40', text: 'text-purple-700 dark:text-purple-300', label: 'Personal' },
     flor_me_debe:     { bg: 'bg-pink-100 dark:bg-pink-900/40',     text: 'text-pink-700 dark:text-pink-300',     label: deudaLabel },
@@ -303,12 +312,13 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
 
   return (
     <div className="space-y-4 pb-32 md:pb-8">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold" style={{ color: 'var(--t)' }}>Mis Gastos</h1>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => { setSelectMode(m => !m); setSelectedIds(new Set()) }}
-            className="text-sm px-4 py-2 rounded-xl border transition"
+            className="text-sm px-3 py-1.5 rounded-xl border transition"
             style={selectMode
               ? { background: 'var(--asoft)', borderColor: 'var(--accent)', color: 'var(--atext)' }
               : { borderColor: 'var(--border)', color: 'var(--t2)', background: 'var(--surface)' }
@@ -316,33 +326,69 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
           >
             {selectMode ? 'Cancelar' : 'Seleccionar'}
           </button>
-          {!selectMode && (
-            <button onClick={openNew} className="text-white text-sm px-4 py-2 rounded-xl transition"
-              style={{ background: 'var(--accent)' }}>
-              + Agregar
-            </button>
-          )}
+          <select
+            className="rounded-xl px-3 py-1.5 text-sm"
+            style={{ border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--t)' }}
+            value={filterMonth}
+            onChange={e => setFilterMonth(Number(e.target.value))}
+          >
+            <option value={0}>Todos los meses</option>
+            {months.map(m => <option key={m} value={m}>{MONTH_NAMES[m]}</option>)}
+          </select>
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Filter type pills */}
+      <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+        {([
+          { id: 'pendiente',    label: 'Pendientes' },
+          { id: 'all',          label: 'Todos' },
+          { id: 'personal',     label: 'Personal' },
+          { id: 'flor_me_debe', label: deudaLabel },
+          { id: 'hogar',        label: 'Hogar' },
+          { id: 'sin_cuenta',   label: 'Sin cuenta' },
+          { id: 'sin_clasificar', label: 'Sin clasificar' },
+        ] as const).map(t => (
+          <button
+            key={t.id}
+            onClick={() => setFilterType(t.id)}
+            className="px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap border transition-all flex-shrink-0"
+            style={filterType === t.id
+              ? { background: 'var(--accent)', color: '#fff', borderColor: 'transparent' }
+              : { borderColor: 'var(--border)', color: 'var(--t2)', background: 'var(--surface)' }}
+          >{t.label}</button>
+        ))}
+      </div>
+
+      {/* Search with icon */}
+      <div style={{ position: 'relative' }}>
+        <svg style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--t3)', pointerEvents: 'none' }} width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input
+          type="text"
+          placeholder="Buscar gastos…"
+          className="w-full rounded-xl py-2.5 text-sm"
+          style={{ paddingLeft: 40, paddingRight: 16, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--t)', outline: 'none' }}
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+      </div>
+
+      {/* Advanced filters */}
       <div className="flex flex-wrap gap-2">
-        <select className="rounded-xl px-2.5 py-1.5 text-sm" style={{ border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--t)' }} value={filterMonth} onChange={e => setFilterMonth(Number(e.target.value))}>
-          <option value={0}>Todos los meses</option>
-          {months.map(m => <option key={m} value={m}>{MONTH_NAMES[m]}</option>)}
-        </select>
-        <select className="rounded-xl px-2.5 py-1.5 text-sm" style={{ border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--t)' }} value={filterType} onChange={e => setFilterType(e.target.value)}>
-          <option value="all">Todos</option>
-          <option value="personal">Personal</option>
-          <option value="flor_me_debe">{deudaLabel}</option>
-          <option value="hogar">Hogar</option>
-          <option value="sin_cuenta">Hogar sin cuenta</option>
-          <option value="sin_clasificar">Sin clasificar</option>
-          <option value="pendiente">Sin corte</option>
-        </select>
         <select className="rounded-xl px-2.5 py-1.5 text-sm" style={{ border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--t)' }} value={filterAccount} onChange={e => setFilterAccount(e.target.value)}>
           <option value="all">Todas las cuentas</option>
           {ACCOUNTS.map(a => <option key={a.key} value={a.key}>{a.label}</option>)}
+        </select>
+        <select className="rounded-xl px-2.5 py-1.5 text-sm" style={{ border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--t)' }} value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
+          <option value="all">Todas las categorías</option>
+          {EXPENSE_CATEGORIES.map(cat => <option key={cat.key} value={cat.key}>{cat.label}</option>)}
+        </select>
+        <select className="rounded-xl px-2.5 py-1.5 text-sm" style={{ border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--t)' }} value={filterAccountType} onChange={e => setFilterAccountType(e.target.value)}>
+          <option value="all">Crédito y débito</option>
+          <option value="credito">Crédito</option>
+          <option value="debito">Débito</option>
         </select>
         <select className="rounded-xl px-2.5 py-1.5 text-sm" style={{ border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--t)' }} value={filterRegDate} onChange={e => setFilterRegDate(e.target.value)}>
           <option value="">Fecha de registro</option>
@@ -352,59 +398,37 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
             </option>
           ))}
         </select>
-        <select className="rounded-xl px-2.5 py-1.5 text-sm" style={{ border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--t)' }} value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
-          <option value="all">Todas las categorías</option>
-          {EXPENSE_CATEGORIES.map(cat => (
-            <option key={cat.key} value={cat.key}>{cat.label}</option>
-          ))}
-        </select>
-        <select className="rounded-xl px-2.5 py-1.5 text-sm" style={{ border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--t)' }} value={filterAccountType} onChange={e => setFilterAccountType(e.target.value)}>
-          <option value="all">Crédito y débito</option>
-          <option value="credito">Crédito</option>
-          <option value="debito">Débito</option>
-        </select>
-        <input
-          type="text"
-          placeholder="Buscar..."
-          className="rounded-xl px-2.5 py-1.5 text-sm flex-1 min-w-28" style={{ border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--t)' }}
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
       </div>
 
-      {/* Summary cards — only show categories with data */}
-      {(totalPersonal > 0 || totalFlorMeDebe > 0 || totalHogar > 0) && (
-        <div className={`grid gap-3 ${[totalPersonal, totalFlorMeDebe, totalHogar].filter(v => v > 0).length === 1 ? 'grid-cols-1' : [totalPersonal, totalFlorMeDebe, totalHogar].filter(v => v > 0).length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
-          {totalPersonal > 0 && (
-            <div className="rounded-2xl px-4 py-3" style={{ background: 'var(--asoft)', border: '1px solid var(--border)' }}>
-              <p className="text-xs font-medium mb-1" style={{ color: 'var(--atext)' }}>Personal</p>
-              <p className="text-base font-bold" style={{ color: 'var(--accent)' }}>
-                S/ {totalPersonal.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
-              </p>
-            </div>
-          )}
-          {totalFlorMeDebe > 0 && (
-            <div className="rounded-2xl px-4 py-3" style={{ background: 'var(--asoft)', border: '1px solid var(--border)' }}>
-              <p className="text-xs font-medium mb-1" style={{ color: 'var(--atext)' }}>{deudaLabel}</p>
-              <p className="text-base font-bold" style={{ color: 'var(--accent)' }}>
-                S/ {totalFlorMeDebe.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
-              </p>
-            </div>
-          )}
-          {totalHogar > 0 && (
-            <div className="rounded-2xl px-4 py-3" style={{ background: 'var(--asoft)', border: '1px solid var(--border)' }}>
-              <p className="text-xs font-medium mb-1" style={{ color: 'var(--atext)' }}>Hogar</p>
-              <p className="text-base font-bold" style={{ color: 'var(--accent)' }}>
-                S/ {totalHogar.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
-              </p>
-            </div>
-          )}
+      {/* Summary pills — horizontal scroll */}
+      <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+        <div className="flex-shrink-0 rounded-2xl px-4 py-3" style={{ background: 'var(--asoft)', minWidth: 130 }}>
+          <p className="text-xs font-medium" style={{ color: 'var(--atext)' }}>Total · {filtered.length}</p>
+          <p className="font-mono font-bold text-base" style={{ color: 'var(--atext)' }}>S/ {subtotal.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</p>
         </div>
-      )}
+        {totalPersonal > 0 && (
+          <div className="flex-shrink-0 rounded-2xl px-4 py-3" style={{ background: '#8b5cf622', minWidth: 130 }}>
+            <p className="text-xs font-medium" style={{ color: '#7c3aed' }}>Personal</p>
+            <p className="font-mono font-bold text-base" style={{ color: '#7c3aed' }}>S/ {totalPersonal.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</p>
+          </div>
+        )}
+        {totalFlorMeDebe > 0 && (
+          <div className="flex-shrink-0 rounded-2xl px-4 py-3" style={{ background: '#ec489922', minWidth: 130 }}>
+            <p className="text-xs font-medium" style={{ color: '#be185d' }}>{deudaLabel}</p>
+            <p className="font-mono font-bold text-base" style={{ color: '#be185d' }}>S/ {totalFlorMeDebe.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</p>
+          </div>
+        )}
+        {totalHogar > 0 && (
+          <div className="flex-shrink-0 rounded-2xl px-4 py-3" style={{ background: 'var(--asoft)', minWidth: 130 }}>
+            <p className="text-xs font-medium" style={{ color: 'var(--atext)' }}>Hogar</p>
+            <p className="font-mono font-bold text-base" style={{ color: 'var(--atext)' }}>S/ {totalHogar.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</p>
+          </div>
+        )}
+      </div>
 
-      {/* Subtotal / select-all bar */}
-      <div className="rounded-2xl px-4 py-3 flex justify-between items-center gap-3" style={{ background: 'var(--asoft)', border: '1px solid var(--border)' }}>
-        {selectMode ? (
+      {/* Select-all bar (only in select mode) */}
+      {selectMode && (
+        <div className="rounded-2xl px-4 py-3 flex justify-between items-center gap-3" style={{ background: 'var(--asoft)', border: '1px solid var(--border)' }}>
           <button onClick={toggleSelectAll} className="flex items-center gap-2.5">
             <span className="w-6 h-6 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition" style={{ background: selectedIds.size === filtered.length && filtered.length > 0 ? 'var(--accent)' : 'var(--surface)', borderColor: 'var(--accent)' }}>
               {selectedIds.size === filtered.length && filtered.length > 0 && (
@@ -418,11 +442,8 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
               {selectedIds.size > 0 ? `${selectedIds.size} seleccionados` : `Seleccionar todos (${filtered.length})`}
             </span>
           </button>
-        ) : (
-          <span className="text-sm font-medium" style={{ color: 'var(--atext)' }}>{filtered.length} gastos</span>
-        )}
-        <span className="font-bold" style={{ color: 'var(--accent)' }}>S/ {subtotal.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
-      </div>
+        </div>
+      )}
 
       {/* Expense list */}
       <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
@@ -432,6 +453,8 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
           const isSelected = selectedIds.has(e.id)
           const splits = detectSplits(e)
           const isMulti = splits.length > 1
+          const catColor = CAT_COLORS[e.category ?? ''] ?? '#94a3b8'
+          const mainSplit = splits[0]
           return (
           <div
             key={e.id}
@@ -439,79 +462,65 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
             style={{ background: isSelected ? 'var(--asoft)' : undefined, borderTop: eIdx > 0 ? '1px solid var(--border)' : undefined }}
             onClick={() => selectMode ? toggleSelect(e.id) : openEdit(e)}
           >
-            {selectMode && (
+            {selectMode ? (
               <span className="w-6 h-6 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition" style={{ background: isSelected ? 'var(--accent)' : 'var(--bg2)', borderColor: isSelected ? 'var(--accent)' : 'var(--border)' }}>
                 {isSelected && <svg className="w-3.5 h-3.5" style={{ color: 'white' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
               </span>
+            ) : (
+              <div className="w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center" style={{ background: catColor + '22' }}>
+                <div className="w-2.5 h-2.5 rounded-full" style={{ background: catColor }} />
+              </div>
             )}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate" style={{ color: 'var(--t)' }}>{e.description}</p>
               <div className="flex gap-1.5 mt-0.5 flex-wrap items-center">
                 <span className="text-xs" style={{ color: 'var(--t3)' }}>{new Date(e.date + 'T00:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}</span>
-                <span className="text-xs px-1.5 py-0.5 rounded-full border font-medium" style={(e.account_type ?? 'credito') === 'credito' ? { background: 'var(--asoft)', color: 'var(--atext)', borderColor: 'var(--border)' } : { background: 'var(--bg2)', color: 'var(--t2)', borderColor: 'var(--border)' }}>
-                  {(e.account_type ?? 'credito') === 'credito' ? 'Crédito' : 'Débito'}
-                </span>
-                {e.created_at && (
-                  <span className="text-xs" style={{ color: 'var(--t3)' }}>· reg. {new Date(e.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}</span>
+                {(e.account_type ?? 'credito') === 'debito' && (
+                  <>
+                    <span style={{ color: 'var(--t3)', fontSize: 10 }}>·</span>
+                    <span className="text-xs" style={{ color: 'var(--amber)' }}>Débito</span>
+                  </>
                 )}
                 {(e.category || e.subcategory) && (() => {
                   const catMeta = getCategoryMeta(e.category ?? '')
                   const subLabel = catMeta?.subcategories.find(s => s.key === e.subcategory)?.label
                   const label = subLabel ?? catMeta?.label ?? e.category
                   return (
-                    <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'var(--bg2)', color: 'var(--t2)', border: '1px solid var(--border)' }}>
-                      {label}
-                    </span>
+                    <>
+                      <span style={{ color: 'var(--t3)', fontSize: 10 }}>·</span>
+                      <span className="text-xs" style={{ color: 'var(--t3)' }}>{label}</span>
+                    </>
                   )
                 })()}
-                {splits.map(sp => {
+                {isMulti && splits.map(sp => {
                   const amt = parseFloat(sp.monto)
-                  const amtLabel = isMulti && amt > 0 ? ` · S/ ${amt.toLocaleString('es-PE', { minimumFractionDigits: 2 })}` : ''
-                  if (sp.clasificacion === 'personal') {
-                    return (
-                      <span key={sp.id} className={`text-xs px-1.5 py-0.5 rounded-full ${CLAS_STYLES.personal.bg} ${CLAS_STYLES.personal.text}`}>
-                        {CLAS_STYLES.personal.label}{amtLabel}
-                      </span>
-                    )
-                  }
-                  if (sp.clasificacion === 'flor_me_debe') {
-                    return (
-                      <span key={sp.id} className={`text-xs px-1.5 py-0.5 rounded-full ${CLAS_STYLES.flor_me_debe.bg} ${CLAS_STYLES.flor_me_debe.text}`}>
-                        {CLAS_STYLES.flor_me_debe.label}{amtLabel}
-                      </span>
-                    )
-                  }
+                  if (amt <= 0) return null
+                  const amtLabel = `S/ ${amt.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`
+                  if (sp.clasificacion === 'personal') return <span key={sp.id} className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: '#8b5cf622', color: '#7c3aed', border: '1px solid #8b5cf633' }}>Personal · {amtLabel}</span>
+                  if (sp.clasificacion === 'flor_me_debe') return <span key={sp.id} className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: '#ec489922', color: '#be185d', border: '1px solid #ec489933' }}>{deudaLabel} · {amtLabel}</span>
                   if (sp.clasificacion === 'hogar') {
-                    if (!sp.hogar_cuenta) {
-                      return (
-                        <span key={sp.id} className={`text-xs px-1.5 py-0.5 rounded-full ${CLAS_STYLES.hogar_sin_cuenta.bg} ${CLAS_STYLES.hogar_sin_cuenta.text}`}>
-                          Hogar · sin cuenta{amtLabel}
-                        </span>
-                      )
-                    }
-                    const cuentaLabel = HOGAR_CUENTAS.find(c => c.key === sp.hogar_cuenta)?.label ?? sp.hogar_cuenta
-                    const isPower = sp.hogar_cuenta === 'power' || sp.hogar_cuenta === 'otros_power'
-                    const powerSub = isPower && sp.power_subcuenta ? POWER_COLS.find(c => c.key === sp.power_subcuenta) : null
-                    const powerSinSub = isPower && !sp.power_subcuenta
-                    return (
-                      <span key={sp.id} className="text-xs px-1.5 py-0.5 rounded-full inline-flex items-center gap-1" style={{ background: powerSinSub ? 'color-mix(in oklch, var(--amber) 15%, transparent)' : 'var(--bg2)', color: powerSinSub ? 'var(--amber)' : 'var(--t2)', border: '1px solid var(--border)' }}>
-                        {cuentaLabel}
-                        {powerSinSub && ' · sin columna'}
-                        {powerSub && <span className="px-1 rounded-full" style={{ background: 'var(--asoft)', color: 'var(--atext)' }}> — {powerSub.label}</span>}
-                        {amtLabel}
-                      </span>
-                    )
+                    const cuentaLabel = HOGAR_CUENTAS.find(c => c.key === sp.hogar_cuenta)?.label ?? (sp.hogar_cuenta || 'Hogar')
+                    return <span key={sp.id} className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'var(--bg2)', color: 'var(--t2)', border: '1px solid var(--border)' }}>{cuentaLabel} · {amtLabel}</span>
                   }
                   return null
                 })}
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-sm whitespace-nowrap" style={{ color: 'var(--t)' }}>
+            <div className="flex flex-col items-end gap-1">
+              <span className="font-mono font-bold text-sm whitespace-nowrap" style={{ color: 'var(--t)' }}>
                 S/ {expenseTotal(e).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
               </span>
+              {!selectMode && (() => {
+                if (!mainSplit?.clasificacion) return <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: '#ef444422', color: '#ef4444', border: '1px solid #ef444433' }}>Sin clasificar</span>
+                if (mainSplit.clasificacion === 'personal') return <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: '#8b5cf622', color: '#7c3aed', border: '1px solid #8b5cf633' }}>Personal</span>
+                if (mainSplit.clasificacion === 'flor_me_debe') return <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: '#ec489922', color: '#be185d', border: '1px solid #ec489933' }}>{deudaLabel}</span>
+                const cuentaLabel = mainSplit.hogar_cuenta ? (HOGAR_CUENTAS.find(c => c.key === mainSplit.hogar_cuenta)?.label ?? mainSplit.hogar_cuenta) : 'Hogar'
+                const isPower = mainSplit.hogar_cuenta === 'power' || mainSplit.hogar_cuenta === 'otros_power'
+                const powerSinSub = isPower && !mainSplit.power_subcuenta
+                return <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: powerSinSub ? 'color-mix(in oklch, var(--amber) 15%, transparent)' : 'var(--asoft)', color: powerSinSub ? 'var(--amber)' : 'var(--atext)', border: `1px solid ${powerSinSub ? 'color-mix(in oklch, var(--amber) 30%, transparent)' : 'var(--border)'}` }}>{cuentaLabel}{powerSinSub ? ' · sin col.' : ''}</span>
+              })()}
               {!selectMode && (
-                <button onClick={ev => { ev.stopPropagation(); deleteExpense(e.id) }} className="text-xs p-1" style={{ color: 'var(--red)' }}>✕</button>
+                <button onClick={ev => { ev.stopPropagation(); deleteExpense(e.id) }} className="text-xs p-0.5 mt-0.5" style={{ color: 'var(--red)' }}>✕</button>
               )}
             </div>
           </div>
@@ -538,9 +547,19 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
         </div>
       )}
 
+      {/* FAB — nuevo gasto */}
+      {!selectMode && (
+        <button
+          onClick={openNew}
+          className="fixed z-30 flex items-center justify-center text-white text-2xl font-light shadow-lg active:scale-95 transition-transform"
+          style={{ bottom: 90, right: 20, width: 56, height: 56, borderRadius: '50%', background: 'var(--accent)' }}
+        >+</button>
+      )}
+
       {/* Form modal */}
       {showForm && (
         <ModalForm
+          key={modalKey}
           editExpense={editExpense}
           form={form}
           setForm={setForm}
