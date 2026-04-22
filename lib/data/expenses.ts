@@ -10,10 +10,6 @@ function admin() {
 }
 
 export async function getPersonalExpenses(userId: string, year: number): Promise<PersonalExpense[]> {
-  'use cache'
-  cacheTag(`expenses-${userId}`)
-  cacheLife('hours')
-
   const { data } = await admin()
     .from('personal_expenses')
     .select('*')
@@ -24,10 +20,6 @@ export async function getPersonalExpenses(userId: string, year: number): Promise
 }
 
 export async function getPendingExpenses(userId: string, year: number): Promise<PersonalExpense[]> {
-  'use cache'
-  cacheTag(`expenses-${userId}`)
-  cacheLife('hours')
-
   const { data } = await admin()
     .from('personal_expenses')
     .select('*')
@@ -39,10 +31,6 @@ export async function getPendingExpenses(userId: string, year: number): Promise<
 }
 
 export async function getAllExpenses(year: number): Promise<PersonalExpense[]> {
-  'use cache'
-  cacheTag('all-expenses')
-  cacheLife('hours')
-
   const { data } = await admin()
     .from('personal_expenses')
     .select('*')

@@ -11,10 +11,6 @@ function admin() {
 }
 
 export async function getBudgetMonths(year?: number): Promise<BudgetMonth[]> {
-  'use cache'
-  cacheTag('budget-months')
-  cacheLife('hours')
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query = (admin().from('budget_months') as any).select('*').order('year').order('month')
   if (year !== undefined) query = query.eq('year', year)
@@ -26,10 +22,6 @@ export async function getBudgetByAccount(
   year: number,
   month: number
 ): Promise<{ budgetMonthId: string | null; budgetByAccount: Record<string, number> }> {
-  'use cache'
-  cacheTag('budget-months')
-  cacheLife('hours')
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: budgetMonth } = await (admin().from('budget_months') as any)
     .select('id')

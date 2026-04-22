@@ -57,13 +57,19 @@ export default function ResumenClient({ months, expenses, allExpenses }: Props) 
   const [powerTotal, setPowerTotal] = useState(0)
 
   useEffect(() => {
-    supabase.from('power_account_entries').select(POWER_COLS.join(','))
+    const monthObj = months.find(m => m.id === selectedMonthId)
+    if (!monthObj) return
+
+    supabase.from('power_account_entries')
+      .select(POWER_COLS.join(','))
+      .eq('entry_year', monthObj.year)
+      .eq('entry_month', MONTH_NAMES[monthObj.month])
       .then(({ data }) => {
         const total = (data ?? []).reduce((sum: number, e: Record<string, number | null>) =>
           sum + POWER_COLS.reduce((s, col) => s + (e[col] ?? 0), 0), 0)
         setPowerTotal(total)
       })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedMonthId, months]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedMonthNum = months.find(m => m.id === selectedMonthId)?.month ?? currentMonth
 
