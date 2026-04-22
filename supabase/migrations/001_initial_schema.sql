@@ -1,5 +1,5 @@
 -- ============================================================
--- Schema: Sistema de Gastos Julio & Flor
+-- Schema: Sistema de Gastos Julio & Flor.
 -- ============================================================
 
 -- Profiles (extends auth.users)
