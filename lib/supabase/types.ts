@@ -208,6 +208,7 @@ export type Database = {
           category: string | null
           subcategory: string | null
           account_type: string
+          source: string | null
           created_at: string
           updated_at: string
         }
@@ -233,6 +234,7 @@ export type Database = {
           category?: string | null
           subcategory?: string | null
           account_type?: string
+          source?: string | null
         }
         Update: {
           date?: string
@@ -252,6 +254,7 @@ export type Database = {
           category?: string | null
           subcategory?: string | null
           account_type?: string
+          source?: string | null
         }
       }
       payment_distribution: {

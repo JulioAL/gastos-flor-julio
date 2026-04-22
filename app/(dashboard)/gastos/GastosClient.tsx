@@ -129,6 +129,7 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
     if (filterType === 'sin_clasificar' && clas !== 'sin_clasificar') return false
     if (filterType === 'sin_cuenta' && clas !== 'hogar_sin_cuenta') return false
     if (filterType === 'pendiente' && e.corte_id !== null) return false
+    if (filterType === 'email' && !e.source) return false
     if (filterRegDate && e.created_at?.slice(0, 10) !== filterRegDate) return false
     if (filterCategory !== 'all' && e.category !== filterCategory) return false
     if (filterAccountType !== 'all' && (e.account_type ?? 'credito') !== filterAccountType) return false
@@ -334,6 +335,7 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
           <option value="sin_cuenta">Hogar sin cuenta</option>
           <option value="sin_clasificar">Sin clasificar</option>
           <option value="pendiente">Sin corte</option>
+          <option value="email">Importados (correo)</option>
         </select>
         <select className="border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-sm" value={filterAccount} onChange={e => setFilterAccount(e.target.value)}>
           <option value="all">Todas las cuentas</option>
@@ -445,6 +447,11 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
                 <span className={`text-xs px-1.5 py-0.5 rounded-full border font-medium ${(e.account_type ?? 'credito') === 'credito' ? 'bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 border-violet-200 dark:border-violet-700' : 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-700'}`}>
                   {(e.account_type ?? 'credito') === 'credito' ? 'Crédito' : 'Débito'}
                 </span>
+                {e.source && (
+                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-cyan-50 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-700">
+                    {e.source === 'bcp' ? 'BCP' : 'Scotiabank'}
+                  </span>
+                )}
                 {e.created_at && (
                   <span className="text-xs text-slate-400 dark:text-slate-500">· reg. {new Date(e.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}</span>
                 )}

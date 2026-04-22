@@ -5,9 +5,8 @@ var API_URL = 'https://TU_URL_VERCEL/api/bank-emails'  // TODO: reemplazar con U
 var API_SECRET = 'TU_SECRET_AQUI'                       // TODO: mismo valor que BANK_EMAIL_SECRET en Vercel
 var PROCESSED_LABEL = 'gastos-procesado'
 
-// TODO: confirmar estos remitentes en Gmail (ver "De:" en los correos reales)
-var BCP_SENDER = 'notificaciones@notificaciones.viabcp.com'
-var SCOTIA_SENDER = 'notificaciones@scotiabank.com.pe'
+var BCP_SENDER = 'notificaciones@notificacionesbcp.com.pe'
+var SCOTIA_SENDER = 'bancadigital@scotiabank.com.pe'
 // ============================================================
 
 
@@ -38,17 +37,18 @@ function parseBCPEmail(message) {
   // Solo procesar correos de consumo (ignorar marketing, etc.)
   if (!body.match(/Realizaste un consumo/)) return null
 
-  var amountMatch   = body.match(/Total del consumo[\s\S]{0,60}?S\/\s*([\d,]+\.?\d*)/)
-  var cardTypeMatch = body.match(/Tarjeta de (Débito|Crédito)/)
+  var amountMatch    = body.match(/Total del consumo[\s\S]{0,60}?S\/\s*([\d,]+\.?\d*)/)
+  var cardTypeMatch  = body.match(/Tarjeta de (Débito|Crédito)/)
   var cardLast4Match = body.match(/Número de Tarjeta[^\n]*[\s\S]{0,10}?\*+(\d{4})/)
-  var merchantMatch = body.match(/Empresa\s+([^\n]+)/)
-  var dateMatch     = body.match(/(\d{1,2} de \w+ de \d{4} - \d{1,2}:\d{2} [AP]M)/)
-  var opMatch       = body.match(/Número de operación\s+(\d+)/)
+  var merchantMatch  = body.match(/Empresa\s+([^\n]+)/)
+  var dateMatch      = body.match(/(\d{1,2} de \w+ de \d{4} - \d{1,2}:\d{2} [AP]M)/)
+  var opMatch        = body.match(/Número de operación\s+(\d+)/)
 
   if (!amountMatch || !merchantMatch) return null
 
   return {
     bank: 'BCP',
+    source: 'bcp',
     amount: parseFloat(amountMatch[1].replace(',', '')),
     merchant: merchantMatch[1].trim(),
     card_type: cardTypeMatch ? cardTypeMatch[1] : 'Débito',
@@ -89,6 +89,7 @@ function parseScotiabankEmail(message) {
 
   return {
     bank: 'Scotiabank',
+    source: 'scotiabank',
     amount: parseFloat(amountMatch[1].replace(',', '')),
     merchant: destMatch ? destMatch[1].trim() : 'Transferencia Plin',
     card_type: 'Débito',

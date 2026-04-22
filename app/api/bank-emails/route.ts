@@ -2,18 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/supabase/types'
 
-// ----------------------------------------------------------------
-// Card → account mapping
-// TODO: fill in with real card last-4 digits and user IDs once confirmed
-// Example:
-//   '7176': { column: 'julio', user_id: 'uuid-de-julio' },  // BCP débito
-//   '9399': { column: 'julio', user_id: 'uuid-de-julio' },  // BCP crédito
-//   '1001': { column: 'julio', user_id: 'uuid-de-julio' },  // Scotia Free
-// ----------------------------------------------------------------
-const CARD_MAPPING: Record<string, { column: string; user_id: string }> = {}
+// TODO: set JULIO_USER_ID in Vercel env vars (copy from Supabase → Authentication → Users)
+const JULIO_USER_ID = process.env.JULIO_USER_ID
 
 type BankEmailPayload = {
   bank: string
+  source: string
   amount: number
   merchant: string
   card_type: string
@@ -38,8 +32,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  if (!JULIO_USER_ID) {
+    return NextResponse.json({ error: 'JULIO_USER_ID not configured' }, { status: 500 })
+  }
+
   const payload: BankEmailPayload = await request.json()
-  const { bank, amount, merchant, card_type, card_last4, date, operation_number, gmail_message_id } = payload
+  const { bank, source, amount, merchant, card_type, date, operation_number, gmail_message_id } = payload
 
   const supabase = getServiceClient()
 
@@ -54,34 +52,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ status: 'duplicate' })
   }
 
-  const mapping = card_last4 ? CARD_MAPPING[card_last4] : undefined
-
-  if (!mapping) {
-    await supabase.from('bank_email_log').insert({
-      gmail_message_id,
-      bank,
-      amount,
-      merchant,
-      card_last4: card_last4 ?? undefined,
-      operation_number: operation_number ?? undefined,
-      status: 'error',
-      error_message: `Tarjeta no configurada: ${card_last4}`,
-    })
-    return NextResponse.json({ error: `Tarjeta no configurada: ${card_last4}` }, { status: 422 })
-  }
-
   const expenseDate = new Date(date)
   const year = expenseDate.getFullYear()
-  const month = expenseDate.getMonth() + 1
-  const tabName = `${year}-${String(month).padStart(2, '0')}`
 
+  // Store as hogar-pending so the user can assign the account later from gastos
   const { error: insertError } = await supabase.from('personal_expenses').insert({
-    user_id: mapping.user_id,
+    user_id: JULIO_USER_ID,
     date: expenseDate.toISOString().split('T')[0],
     description: merchant,
-    [mapping.column]: amount,
+    tab_name: `hp|${amount}`,
     account_type: card_type === 'Crédito' ? 'credito' : 'debito',
-    tab_name: tabName,
+    source,
     year,
   })
 
@@ -91,7 +72,6 @@ export async function POST(request: NextRequest) {
       bank,
       amount,
       merchant,
-      card_last4: card_last4 ?? undefined,
       operation_number: operation_number ?? undefined,
       status: 'error',
       error_message: insertError.message,
@@ -104,7 +84,6 @@ export async function POST(request: NextRequest) {
     bank,
     amount,
     merchant,
-    card_last4: card_last4 ?? undefined,
     operation_number: operation_number ?? undefined,
     status: 'ok',
   })
