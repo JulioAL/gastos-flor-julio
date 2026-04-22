@@ -18,8 +18,32 @@ const EMPTY_FORM = Object.fromEntries([
   ...POWER_COLS.map(c => [c.key, '']),
 ]) as Record<string, string>
 
+const MONTH_ORDER: Record<string, number> = {
+  enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6,
+  julio: 7, agosto: 8, setiembre: 9, septiembre: 9, octubre: 10, noviembre: 11, diciembre: 12,
+}
+
 interface Props {
   initialEntries: PowerAccountEntry[]
+}
+
+function ChartTooltip({ active, payload, chartCol }: { active?: boolean; payload?: { payload: Record<string, number | string> }[] ; chartCol: string }) {
+  if (!active || !payload?.length) return null
+  const d = payload[0].payload
+  const value = d[chartCol] as number
+  const delta = d[`${chartCol}_delta`] as number
+  const fmt = (n: number) => `S/ ${n.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`
+  return (
+    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 shadow-lg text-xs space-y-1">
+      <p className="font-semibold text-slate-700 dark:text-slate-300">{d.label as string}</p>
+      <p className="text-slate-800 dark:text-slate-200">{fmt(value)}</p>
+      {delta !== 0 && (
+        <p className={delta > 0 ? 'text-accent font-semibold' : 'text-red-500 dark:text-red-400 font-semibold'}>
+          {delta > 0 ? '+' : ''}{fmt(delta)}
+        </p>
+      )}
+    </div>
+  )
 }
 
 export default function PowerClient({ initialEntries }: Props) {
@@ -60,11 +84,6 @@ export default function PowerClient({ initialEntries }: Props) {
     }
     return t
   }, [entries])
-
-  const MONTH_ORDER: Record<string, number> = {
-    enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6,
-    julio: 7, agosto: 8, setiembre: 9, septiembre: 9, octubre: 10, noviembre: 11, diciembre: 12,
-  }
 
   // Line chart: group by month+year, one point per month, running totals for all cols + total
   const chartData = useMemo(() => {
@@ -144,7 +163,11 @@ export default function PowerClient({ initialEntries }: Props) {
   function toggleSelect(id: string) {
     setSelectedIds(prev => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
       return next
     })
   }
@@ -166,25 +189,6 @@ export default function PowerClient({ initialEntries }: Props) {
     setSelectedIds(new Set())
     setSelectMode(false)
     setBulkDeleting(false)
-  }
-
-  function ChartTooltip({ active, payload }: { active?: boolean; payload?: { payload: Record<string, number | string> }[] }) {
-    if (!active || !payload?.length) return null
-    const d = payload[0].payload
-    const value = d[chartCol] as number
-    const delta = d[`${chartCol}_delta`] as number
-    const fmt = (n: number) => `S/ ${n.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`
-    return (
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 shadow-lg text-xs space-y-1">
-        <p className="font-semibold text-slate-700 dark:text-slate-300">{d.label as string}</p>
-        <p className="text-slate-800 dark:text-slate-200">{fmt(value)}</p>
-        {delta !== 0 && (
-          <p className={delta > 0 ? 'text-accent font-semibold' : 'text-red-500 dark:text-red-400 font-semibold'}>
-            {delta > 0 ? '+' : ''}{fmt(delta)}
-          </p>
-        )}
-      </div>
-    )
   }
 
   return (
@@ -232,7 +236,7 @@ export default function PowerClient({ initialEntries }: Props) {
               <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
               <XAxis dataKey="label" tick={{ fontSize: 9 }} />
               <YAxis tick={{ fontSize: 10 }} />
-              <Tooltip content={<ChartTooltip />} />
+              <Tooltip content={<ChartTooltip chartCol={chartCol} />} />
               <Line type="monotone" dataKey={chartCol} stroke="var(--accent)" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>

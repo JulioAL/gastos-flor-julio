@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 export default function AjustesPage() {
-  const { colorTheme, setColorTheme, isDark, setTheme } = useTheme()
+  const { colorTheme, setColorTheme, theme, setTheme } = useTheme()
   const supabase = createClient()
   const router = useRouter()
   const [userName, setUserName] = useState('')
@@ -150,7 +150,7 @@ export default function AjustesPage() {
                 <p className="text-sm font-medium" style={{ color: 'var(--t)' }}>{opt.label}</p>
                 <p className="text-xs" style={{ color: 'var(--t3)' }}>{opt.desc}</p>
               </div>
-              {((isDark && opt.id === 'dark') || (!isDark && opt.id === 'light')) && (
+              {theme === opt.id && (
                 <span
                   className="w-5 h-5 rounded-full flex items-center justify-center"
                   style={{ background: 'var(--accent)' }}

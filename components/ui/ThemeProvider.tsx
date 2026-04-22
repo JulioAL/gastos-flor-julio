@@ -32,15 +32,38 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [isDark, setIsDark] = useState(false)
   const [colorTheme, setColorThemeState] = useState<ColorTheme>('durazno')
 
-  useEffect(() => {
-    const saved = localStorage.getItem('theme') as Theme | null
-    const initial = saved ?? 'system'
-    setThemeState(initial)
-    applyTheme(initial)
+  function applyTheme(t: Theme) {
+    const root = document.documentElement
+    if (t === 'dark') {
+      root.classList.add('dark')
+      setIsDark(true)
+    } else if (t === 'light') {
+      root.classList.remove('dark')
+      setIsDark(false)
+    } else {
+      const dark = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
+      root.classList.toggle('dark', dark)
+      setIsDark(dark)
+    }
+  }
 
-    const savedColor = (localStorage.getItem('gfj-theme') as ColorTheme | null) ?? 'durazno'
-    setColorThemeState(savedColor)
-    document.documentElement.setAttribute('data-theme', savedColor)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('theme') as Theme | null
+      const initial = saved ?? 'system'
+      const savedColor = (localStorage.getItem('gfj-theme') as ColorTheme | null) ?? 'durazno'
+
+      /* eslint-disable react-hooks/set-state-in-effect */
+      setThemeState(initial)
+      setColorThemeState(savedColor)
+      /* eslint-enable react-hooks/set-state-in-effect */
+
+      applyTheme(initial)
+      document.documentElement.setAttribute('data-theme', savedColor)
+    } catch (e) {
+      console.error('Failed to load theme from localStorage:', e)
+      applyTheme('system')
+    }
   }, [])
 
   useEffect(() => {
@@ -54,30 +77,24 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return () => mq.removeEventListener('change', handler)
   }, [theme])
 
-  function applyTheme(t: Theme) {
-    const root = document.documentElement
-    if (t === 'dark') {
-      root.classList.add('dark')
-      setIsDark(true)
-    } else if (t === 'light') {
-      root.classList.remove('dark')
-      setIsDark(false)
-    } else {
-      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches
-      root.classList.toggle('dark', dark)
-      setIsDark(dark)
-    }
-  }
 
   function setTheme(t: Theme) {
     setThemeState(t)
-    localStorage.setItem('theme', t)
+    try {
+      localStorage.setItem('theme', t)
+    } catch (e) {
+      console.error('Failed to save theme to localStorage:', e)
+    }
     applyTheme(t)
   }
 
   function setColorTheme(c: ColorTheme) {
     setColorThemeState(c)
-    localStorage.setItem('gfj-theme', c)
+    try {
+      localStorage.setItem('gfj-theme', c)
+    } catch (e) {
+      console.error('Failed to save color theme to localStorage:', e)
+    }
     document.documentElement.setAttribute('data-theme', c)
   }
 

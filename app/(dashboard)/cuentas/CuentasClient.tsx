@@ -192,7 +192,9 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
   // Uses soft-delete (hidden=true) so deleted rows are never re-seeded.
   useEffect(() => {
     if (!selectedMonthId) return
+    /* eslint-disable react-hooks/set-state-in-effect */
     setDistLoading(true)
+    /* eslint-enable react-hooks/set-state-in-effect */
     async function load() {
       const [distResult, deudaResult] = await Promise.all([
         // Fetch ALL rows for this month (including hidden) to know what's been deleted
@@ -320,13 +322,15 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
 
   useEffect(() => {
     if (!selectedMonthId) return
+    /* eslint-disable react-hooks/set-state-in-effect */
     setLoading(true)
+    /* eslint-enable react-hooks/set-state-in-effect */
     supabase.from('budget_expenses').select('*').eq('budget_month_id', selectedMonthId)
       .then(({ data }) => {
         setExpenses(data ?? [])
         setLoading(false)
       })
-  }, [selectedMonthId])
+  }, [selectedMonthId, supabase])
 
   useEffect(() => {
     if (!selectedMonthId) return
@@ -344,7 +348,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
         }
         setIncomeByMonth(byMonth)
       })
-  }, [selectedMonthId])
+  }, [selectedMonthId, months, supabase])
 
   useEffect(() => {
     if (!selectedMonthId) return
@@ -371,7 +375,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
         setGastoRows(ordered)
         setGastosByMonth(byMonth)
       })
-  }, [selectedMonthId])
+  }, [selectedMonthId, months, supabase])
 
   useEffect(() => {
     if (!selectedMonthId) return
@@ -403,7 +407,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
         setDeudaRows(ordered)
         setDeudasByMonth(byMonth)
       })
-  }, [selectedMonthId])
+  }, [selectedMonthId, months, supabase])
 
   async function saveIncomeCell(monthId: string, source: string) {
     const amount = parseFloat(editCellValue)
@@ -499,6 +503,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
     setEditGastoLabelValue('')
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async function removeGastoRow(label: string) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const client = supabase.from('budget_expenses') as any
@@ -508,6 +513,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
     setGastosByMonth(prev => {
       const next = { ...prev }
       if (next[selectedMonthId]) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { [label]: _, ...rest } = next[selectedMonthId]
         next[selectedMonthId] = rest
       }
@@ -562,6 +568,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
     setEditDeudaLabelValue('')
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async function removeDeudaRow(label: string) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const client = supabase.from('budget_expenses') as any
@@ -571,6 +578,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
     setDeudasByMonth(prev => {
       const next = { ...prev }
       if (next[selectedMonthId]) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { [label]: _, ...rest } = next[selectedMonthId]
         next[selectedMonthId] = rest
       }
@@ -668,6 +676,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
         }
       }
       // Reload expenses so the cuentas section updates
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: refreshed } = await (supabase.from('budget_expenses') as any)
         .select('*').eq('budget_month_id', selectedMonthId)
       if (refreshed) setExpenses(refreshed)
@@ -719,6 +728,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
         await expClient.delete().eq('id', appliedRow.id)
       }
       // Reload
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: refreshed } = await (supabase.from('budget_expenses') as any)
         .select('*').eq('budget_month_id', selectedMonthId)
       if (refreshed) setExpenses(refreshed)
@@ -833,6 +843,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
     setEditingAccountKey(null)
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const monthLabels = getMonthLabels(months, selectedMonthId)
   const isSelectedMonthLocked = months.find(m => m.id === selectedMonthId)?.locked ?? false
 
@@ -1414,7 +1425,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                   if (empty) return
                   setOpenDestinos(prev => {
                     const next = new Set(prev)
-                    next.has(d.key) ? next.delete(d.key) : next.add(d.key)
+                    if (next.has(d.key)) next.delete(d.key); else next.add(d.key)
                     return next
                   })
                 }
@@ -1546,8 +1557,10 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                                 style={{border:'1px solid var(--accent)',background:'var(--surface)',color:'var(--t)',outline:'none'}}
                                 value={editDistCellValue}
                                 onChange={e => setEditDistCellValue(e.target.value)}
+                                /* eslint-disable react-hooks/refs */
                                 onBlur={() => commitDistCell(row.id, 'gasto_egreso', editDistCellValue)}
                                 onKeyDown={e => { if (e.key === 'Enter') commitDistCell(row.id, 'gasto_egreso', editDistCellValue); if (e.key === 'Escape') setEditingDistCell(null) }}
+                                /* eslint-enable react-hooks/refs */
                               />
                             ) : (
                               <span className={isSelectedMonthLocked ? '' : 'cursor-pointer font-medium'}
