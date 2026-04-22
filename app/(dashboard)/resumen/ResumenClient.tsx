@@ -69,7 +69,9 @@ export default function ResumenClient({ months, expenses, allExpenses }: Props) 
 
   useEffect(() => {
     if (!selectedMonthId) return
+    /* eslint-disable react-hooks/set-state-in-effect */
     setLoading(true)
+    /* eslint-enable react-hooks/set-state-in-effect */
     Promise.all([
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase.from('budget_income') as any).select('*').eq('budget_month_id', selectedMonthId).in('source', ['julio', 'flor', 'otros_ingresos']),

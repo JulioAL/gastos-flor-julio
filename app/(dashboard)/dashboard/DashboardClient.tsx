@@ -1,8 +1,8 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Legend } from 'recharts'
-import { EXPENSE_COLUMNS, MONTH_NAMES, ACCOUNTS } from '@/lib/utils/accounts'
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts'
+import { EXPENSE_COLUMNS, MONTH_NAMES } from '@/lib/utils/accounts'
 import type { PersonalExpense } from '@/lib/supabase/types'
 
 const COLORS = ['#6366f1','#22c55e','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#14b8a6','#f97316','#84cc16']

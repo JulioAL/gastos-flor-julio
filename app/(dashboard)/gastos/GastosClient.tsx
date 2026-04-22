@@ -263,7 +263,7 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
   function toggleSelect(id: string) {
     setSelectedIds(prev => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      if (next.has(id)) next.delete(id); else next.add(id)
       return next
     })
   }
@@ -302,6 +302,7 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
     viajes: '#0ea5e9', familia: '#fb923c', otros: '#94a3b8',
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const CLAS_STYLES = {
     personal:         { bg: 'bg-purple-100 dark:bg-purple-900/40', text: 'text-purple-700 dark:text-purple-300', label: 'Personal' },
     flor_me_debe:     { bg: 'bg-pink-100 dark:bg-pink-900/40',     text: 'text-pink-700 dark:text-pink-300',     label: deudaLabel },

@@ -10,8 +10,10 @@
  *   - Power (Cuentasbanco v2): ALL rows, no year filter
  */
 
+/* eslint-disable @typescript-eslint/no-require-imports */
 const XLSX = require('xlsx')
 const { createClient } = require('@supabase/supabase-js')
+/* eslint-enable @typescript-eslint/no-require-imports */
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -70,6 +72,7 @@ function excelDateToISO(serial) {
 // col 24 = navidad (NavidadJ)
 // col 25 = gaso (GasoJ)
 
+/* eslint-disable @typescript-eslint/no-unused-vars */
 const REPARTO_COLS = {
   julio: 18,
   flor: 19,
@@ -362,6 +365,7 @@ async function migrateGastos(wb) {
     const costoSolesIdx = headers.findIndex(h => String(h).toLowerCase().includes('costo soles'))
     // Fallback: "costo dólares" if no soles column
     const costoIdx = costoSolesIdx !== -1 ? costoSolesIdx : headers.findIndex(h => String(h).toLowerCase().includes('costo'))
+/* eslint-enable @typescript-eslint/no-unused-vars */
 
     // Fallback date = the tab name itself if it's "DD-MM-YYYY", else first day of the tab's month
     const ddmmyyyy = tab.match(/^(\d{2})-(\d{2})-(\d{4})$/)
