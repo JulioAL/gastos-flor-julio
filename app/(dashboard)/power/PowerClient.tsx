@@ -171,7 +171,7 @@ export default function PowerClient({ initialEntries }: Props) {
     const d = payload[0].payload
     const value = d[chartCol] as number
     const delta = d[`${chartCol}_delta`] as number
-    const fmt = (n: number) => `S/ ${n.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`
+    const fmt = (n: number) => `S/ ${n.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     return (
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 shadow-lg text-xs space-y-1">
         <p className="font-semibold text-slate-700 dark:text-slate-300">{d.label as string}</p>
@@ -204,7 +204,7 @@ export default function PowerClient({ initialEntries }: Props) {
             <div key={col.key} className="p-3 border-b sm:border-b-0 sm:border-r border-slate-100 dark:border-slate-700 last:border-0">
               <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{col.label}</p>
               <p className={`text-sm font-bold mt-0.5 ${(totals[col.key] ?? 0) >= 0 ? 'text-atext' : 'text-red-600 dark:text-red-400'}`}>
-                S/ {(totals[col.key] ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                S/ {(Math.round((totals[col.key] ?? 0) * 100) / 100).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
             </div>
           ))}
@@ -277,7 +277,7 @@ export default function PowerClient({ initialEntries }: Props) {
             )}
           </div>
           <span className="text-sm font-bold text-atext">
-            Total general (todo el historial): S/ {Object.values(totals).reduce((s, v) => s + v, 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+            Total general (todo el historial): S/ {(Math.round(Object.values(totals).reduce((s, v) => s + v, 0) * 100) / 100).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
         </div>
         <div className="overflow-x-auto touch-pan-x md:max-h-[60vh] md:overflow-y-auto">
@@ -305,7 +305,7 @@ export default function PowerClient({ initialEntries }: Props) {
             </thead>
             <tbody>
               {filteredEntries.map(e => {
-                const rowTotal = POWER_COLS.reduce((s, c) => s + (((e as Record<string, unknown>)[c.key] as number | null) ?? 0), 0)
+                const rowTotal = Math.round(POWER_COLS.reduce((s, c) => s + (((e as Record<string, unknown>)[c.key] as number | null) ?? 0), 0) * 100) / 100
                 const isSelected = selectedIds.has(e.id)
                 return (
                   <tr
@@ -328,12 +328,12 @@ export default function PowerClient({ initialEntries }: Props) {
                       const val = (e as Record<string, unknown>)[c.key] as number | null
                       return (
                         <td key={c.key} className={`px-3 py-2 text-right whitespace-nowrap ${val == null ? 'text-slate-200 dark:text-slate-700' : val >= 0 ? 'text-slate-800 dark:text-slate-200' : 'text-red-600 dark:text-red-400'}`}>
-                          {val != null ? `S/ ${val.toLocaleString('es-PE', { minimumFractionDigits: 2 })}` : '-'}
+                          {val != null ? `S/ ${val.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
                         </td>
                       )
                     })}
                     <td className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${rowTotal >= 0 ? 'text-atext' : 'text-red-600 dark:text-red-400'}`}>
-                      S/ {rowTotal.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                      S/ {rowTotal.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td className="px-3 py-2 text-center">
                       <button onClick={() => setConfirmDeleteId(e.id)} className="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition rounded p-1.5">
@@ -353,11 +353,11 @@ export default function PowerClient({ initialEntries }: Props) {
                 <td className="px-3 py-2 sticky left-36 z-10 bg-asoft w-32 min-w-[128px] border-r border-accent"></td>
                 {POWER_COLS.map(c => (
                   <td key={c.key} className={`px-3 py-2 text-right whitespace-nowrap ${(totals[c.key] ?? 0) >= 0 ? 'text-atext' : 'text-red-600 dark:text-red-400'}`}>
-                    S/ {(totals[c.key] ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                    S/ {(Math.round((totals[c.key] ?? 0) * 100) / 100).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
                 ))}
                 <td className="px-3 py-2 text-right text-atext whitespace-nowrap">
-                  S/ {Object.values(totals).reduce((s, v) => s + v, 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                  S/ {(Math.round(Object.values(totals).reduce((s, v) => s + v, 0) * 100) / 100).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </td>
                 <td className="px-3 py-2"></td>
               </tr>
