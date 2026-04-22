@@ -5,9 +5,10 @@ import NavBar from '@/components/ui/NavBar'
 
 async function DashboardShell({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { session } } = await supabase.auth.getSession()
 
-  if (!user) redirect('/login')
+  if (!session) redirect('/login')
+  const user = session.user
 
   const isDev = process.env.NEXT_PUBLIC_ENV !== 'production'
 

@@ -5,10 +5,11 @@ import GastosClient from './GastosClient'
 
 async function GastosContent() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  const expenses = await getPersonalExpenses(user!.id, 2026)
-  const isJulio = (user!.email ?? '').toLowerCase().includes('julio')
-  return <GastosClient initialExpenses={expenses} userId={user!.id} isJulio={isJulio} />
+  const { data: { session } } = await supabase.auth.getSession()
+  const user = session!.user
+  const expenses = await getPersonalExpenses(user.id, 2026)
+  const isJulio = (user.email ?? '').toLowerCase().includes('julio')
+  return <GastosClient initialExpenses={expenses} userId={user.id} isJulio={isJulio} />
 }
 
 export default function GastosPage() {

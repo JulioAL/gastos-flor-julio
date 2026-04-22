@@ -6,11 +6,12 @@ import ResumenClient from './ResumenClient'
 
 async function ResumenContent() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { session } } = await supabase.auth.getSession()
+  const user = session!.user
 
   const [months, myExpenses, allExpenses] = await Promise.all([
     getBudgetMonths(2026),
-    getPersonalExpenses(user!.id, 2026),
+    getPersonalExpenses(user.id, 2026),
     getAllExpenses(2026),
   ])
 
