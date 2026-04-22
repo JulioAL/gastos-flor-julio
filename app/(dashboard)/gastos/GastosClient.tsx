@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { saveExpenseAction, deleteExpenseAction, bulkDeleteExpensesAction } from './actions'
 import { EXPENSE_COLUMNS, ACCOUNTS, MONTH_NAMES, POWER_COLS, EXPENSE_CATEGORIES, detectExpenseTag, getCategoryMeta } from '@/lib/utils/accounts'
 import type { PersonalExpense } from '@/lib/supabase/types'
 
@@ -98,7 +98,6 @@ const EMPTY_FORM = {
 
 export default function GastosClient({ initialExpenses, userId, isJulio }: Props) {
   const deudaLabel = isJulio ? 'Flor me debe' : 'Julio me debe'
-  const supabase = createClient()
   const [expenses, setExpenses] = useState<PersonalExpense[]>(initialExpenses)
   const [filterMonth, setFilterMonth] = useState<number>(0)
   const [filterAccount, setFilterAccount] = useState<string>('all')
@@ -234,14 +233,13 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
       payload.created_at = form.created_at_date + 'T12:00:00.000Z'
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const client = supabase.from('personal_expenses') as any
-    if (editExpense) {
-      const { data } = await client.update(payload).eq('id', editExpense.id).select().single()
-      if (data) setExpenses((prev: PersonalExpense[]) => prev.map(e => e.id === data.id ? data : e))
-    } else {
-      const { data } = await client.insert(payload).select().single()
-      if (data) setExpenses((prev: PersonalExpense[]) => [data, ...prev])
+    const data = await saveExpenseAction(userId, payload, editExpense?.id)
+    if (data) {
+      if (editExpense) {
+        setExpenses((prev: PersonalExpense[]) => prev.map(e => e.id === data.id ? data : e))
+      } else {
+        setExpenses((prev: PersonalExpense[]) => [data, ...prev])
+      }
     }
 
     setSaving(false)
@@ -256,7 +254,7 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
 
   async function deleteExpense(id: string) {
     if (!confirm('¿Eliminar este gasto?')) return
-    await supabase.from('personal_expenses').delete().eq('id', id)
+    await deleteExpenseAction(userId, id)
     setExpenses(prev => prev.filter(e => e.id !== id))
   }
 
@@ -285,7 +283,7 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
     if (!confirm(`¿Eliminar ${selectedIds.size} gasto${selectedIds.size !== 1 ? 's' : ''}? Esta acción no se puede deshacer.`)) return
     setBulkDeleting(true)
     const ids = Array.from(selectedIds)
-    await supabase.from('personal_expenses').delete().in('id', ids)
+    await bulkDeleteExpensesAction(userId, ids)
     setExpenses(prev => prev.filter(e => !selectedIds.has(e.id)))
     setSelectedIds(new Set())
     setBulkDeleting(false)

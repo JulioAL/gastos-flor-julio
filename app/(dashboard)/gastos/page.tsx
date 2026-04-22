@@ -1,19 +1,20 @@
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
+import { getPersonalExpenses } from '@/lib/data/expenses'
 import GastosClient from './GastosClient'
 
-export default async function GastosPage() {
+async function GastosContent() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  const expenses = await getPersonalExpenses(user!.id, 2026)
+  const isJulio = (user!.email ?? '').toLowerCase().includes('julio')
+  return <GastosClient initialExpenses={expenses} userId={user!.id} isJulio={isJulio} />
+}
 
-  const { data: expenses } = await supabase
-    .from('personal_expenses')
-    .select('*')
-    .eq('user_id', user!.id)
-    .eq('year', 2026)
-    .order('date', { ascending: false })
-
-  const userEmail = user!.email ?? ''
-  const isJulio = userEmail.toLowerCase().includes('julio')
-
-  return <GastosClient initialExpenses={expenses ?? []} userId={user!.id} isJulio={isJulio} />
+export default function GastosPage() {
+  return (
+    <Suspense fallback={null}>
+      <GastosContent />
+    </Suspense>
+  )
 }

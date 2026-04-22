@@ -1,8 +1,9 @@
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import NavBar from '@/components/ui/NavBar'
 
-export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+async function DashboardShell({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -33,5 +34,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </main>
       </div>
     </div>
+  )
+}
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={null}>
+      <DashboardShell>{children}</DashboardShell>
+    </Suspense>
   )
 }

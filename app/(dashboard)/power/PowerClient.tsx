@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
-import { createClient } from '@/lib/supabase/client'
+import { savePowerEntryAction, deletePowerEntryAction, bulkDeletePowerEntriesAction } from './actions'
 import { POWER_COLS } from '@/lib/utils/accounts'
 import type { PowerAccountEntry } from '@/lib/supabase/types'
 
@@ -23,7 +23,6 @@ interface Props {
 }
 
 export default function PowerClient({ initialEntries }: Props) {
-  const supabase = createClient()
   const [entries, setEntries] = useState<PowerAccountEntry[]>(initialEntries)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
@@ -122,8 +121,7 @@ export default function PowerClient({ initialEntries }: Props) {
       ;(payload as Record<string, unknown>)[col.key] = val ? parseFloat(val) : null
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (supabase.from('power_account_entries') as any).insert(payload).select().single()
+    const data = await savePowerEntryAction(payload as Record<string, unknown>)
     if (data) setEntries(prev => [...prev, data])
     setSaving(false)
     if (andAnother) {
@@ -136,7 +134,7 @@ export default function PowerClient({ initialEntries }: Props) {
 
   async function deleteEntry() {
     if (!confirmDeleteId) return
-    await supabase.from('power_account_entries').delete().eq('id', confirmDeleteId)
+    await deletePowerEntryAction(confirmDeleteId)
     setEntries(prev => prev.filter(e => e.id !== confirmDeleteId))
     setConfirmDeleteId(null)
   }
@@ -161,7 +159,7 @@ export default function PowerClient({ initialEntries }: Props) {
     if (!confirm(`¿Eliminar ${selectedIds.size} entrada${selectedIds.size !== 1 ? 's' : ''}? Esta acción no se puede deshacer.`)) return
     setBulkDeleting(true)
     const ids = Array.from(selectedIds)
-    await supabase.from('power_account_entries').delete().in('id', ids)
+    await bulkDeletePowerEntriesAction(ids)
     setEntries(prev => prev.filter(e => !selectedIds.has(e.id)))
     setSelectedIds(new Set())
     setSelectMode(false)

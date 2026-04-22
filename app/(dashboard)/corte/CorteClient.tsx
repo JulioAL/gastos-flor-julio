@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Fragment } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { revertCorteAction, realizarCorteAction } from './actions'
 import { CORTE_ACCOUNT_GROUPS, computeCorteAccountTotals, MONTH_NAMES } from '@/lib/utils/accounts'
 import type { PersonalExpense, CorteWithTotals } from '@/lib/supabase/types'
 
@@ -52,7 +53,6 @@ function formatDate(dateStr: string): string {
 
 export default function CorteClient({ pendingExpenses, cortes, userId, budgetByAccount, powerTotal, budgetMonthId }: Props) {
   const supabase = createClient()
-
   const [localPending, setLocalPending] = useState<PersonalExpense[]>(pendingExpenses)
   const [localCortes, setLocalCortes] = useState<CorteWithTotals[]>(cortes)
   const [expandedAccount, setExpandedAccount] = useState<string | null>(null)
@@ -87,9 +87,7 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
   async function revertCorte(corteId: string) {
     if (!confirm('¿Revertir este corte? Los gastos volverán a quedar pendientes.')) return
     setRevertingId(corteId)
-    // Deleting the corte row triggers ON DELETE SET NULL on personal_expenses.corte_id automatically
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from('cortes') as any).delete().eq('id', corteId)
+    await revertCorteAction(corteId)
     setLocalCortes(prev => prev.filter(c => c.id !== corteId))
     setRevertingId(null)
   }
@@ -138,106 +136,35 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
     const settledDate = settledDateInput
     const now = new Date(settledDate + 'T12:00:00')
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const cortesClient = supabase.from('cortes') as any
-    const { data: newCorte, error } = await cortesClient
-      .insert({
-        settled_date: settledDate,
-        year: now.getFullYear(),
-        month: now.getMonth() + 1,
-        notes: corteNotes.trim() || null,
-        created_by: userId,
-      })
-      .select()
-      .single()
+    const powerExpensesWithSub = expensesToSettle.filter(e => isPowerExpense(e) && hasPowerSubcuenta(e))
+    const powerRows = powerExpensesWithSub.map(e => {
+      const colKey = (e.tab_name ?? '').slice(3) // strip 'ps|'
+      const amount = (e.power ?? 0) + (e.otros_power ?? 0)
+      return {
+        entry_year: new Date(e.date + 'T00:00:00').getFullYear(),
+        entry_month: MONTH_NAMES[new Date(e.date + 'T00:00:00').getMonth() + 1],
+        description: `${e.description} - corte ${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+        [colKey]: -amount,
+      }
+    })
 
-    if (error || !newCorte) {
-      console.error('Error creating corte:', error)
+    const newCorteWithTotals = await realizarCorteAction({
+      settledDate,
+      notes: corteNotes.trim() || null,
+      userId,
+      accountTotals,
+      expenseIds: expensesToSettle.map(e => e.id),
+      budgetMonthId,
+      powerRows,
+    })
+
+    if (!newCorteWithTotals) {
+      console.error('Error creating corte')
       setPerforming(false)
       return
     }
 
-    const totalsRows = CORTE_ACCOUNT_GROUPS
-      .filter(g => accountTotals[g.accountKey] > 0)
-      .map(g => ({
-        corte_id: newCorte.id,
-        account_key: g.accountKey,
-        total_amount: accountTotals[g.accountKey],
-      }))
-
-    if (totalsRows.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase.from('corte_account_totals') as any).insert(totalsRows)
-    }
-
-    const settledIds = expensesToSettle.map(e => e.id)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from('personal_expenses') as any)
-      .update({ corte_id: newCorte.id })
-      .in('id', settledIds)
-
-    // Subtract settled amounts from each account's balance in budget_expenses
-    // Power is skipped — its balance comes from power_account_entries, not budget_expenses
-    if (budgetMonthId) {
-      const accountsToDeduct = CORTE_ACCOUNT_GROUPS.filter(
-        g => g.accountKey !== 'power' && (accountTotals[g.accountKey] ?? 0) > 0
-      )
-      if (accountsToDeduct.length > 0) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const budgetClient = supabase.from('budget_expenses') as any
-        const { data: existingRows } = await budgetClient
-          .select('id, account, category, amount')
-          .eq('budget_month_id', budgetMonthId)
-
-        const rows = (existingRows ?? []) as { id: string; account: string; category: string; amount: number | null }[]
-
-        for (const group of accountsToDeduct) {
-          const corteAmt = accountTotals[group.accountKey]
-          // Find the direct row (category === account key) — this is the editable balance
-          const direct = rows.find(r => r.account === group.accountKey && r.category === group.accountKey)
-          const currentBalance = direct
-            ? (direct.amount ?? 0)
-            : rows.filter(r => r.account === group.accountKey && r.category !== group.accountKey)
-                .reduce((s, r) => s + (r.amount ?? 0), 0)
-          const newBalance = currentBalance - corteAmt
-
-          if (direct) {
-            await budgetClient.update({ amount: newBalance }).eq('id', direct.id)
-          } else {
-            await budgetClient.insert({
-              budget_month_id: budgetMonthId,
-              account: group.accountKey,
-              category: group.accountKey,
-              amount: newBalance,
-            })
-          }
-        }
-      }
-    }
-
-    // Insert one negative power entry per expense with subcuenta assigned
-    const powerExpensesWithSub = expensesToSettle.filter(e => isPowerExpense(e) && hasPowerSubcuenta(e))
-    if (powerExpensesWithSub.length > 0) {
-      const powerRows = powerExpensesWithSub.map(e => {
-        const colKey = (e.tab_name ?? '').slice(3) // strip 'ps|'
-        const amount = (e.power ?? 0) + (e.otros_power ?? 0)
-        return {
-          entry_year: new Date(e.date + 'T00:00:00').getFullYear(),
-          entry_month: MONTH_NAMES[new Date(e.date + 'T00:00:00').getMonth() + 1],
-          description: `${e.description} - corte ${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}`,
-          [colKey]: -amount,
-        }
-      })
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase.from('power_account_entries') as any).insert(powerRows)
-    }
-
-    const newCorteWithTotals: CorteWithTotals = {
-      ...newCorte,
-      corte_account_totals: totalsRows.map((r, i) => ({ ...r, id: `temp-${i}` })),
-    }
-
-    const settledIdSet = new Set(settledIds)
+    const settledIdSet = new Set(expensesToSettle.map(e => e.id))
     const remaining = localPending.filter(e => !settledIdSet.has(e.id))
 
     setLocalCortes(prev => [newCorteWithTotals, ...prev])

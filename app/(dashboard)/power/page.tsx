@@ -1,14 +1,16 @@
-import { createClient } from '@/lib/supabase/server'
+import { Suspense } from 'react'
+import { getPowerEntries } from '@/lib/data/power'
 import PowerClient from './PowerClient'
 
-export default async function PowerPage() {
-  const supabase = await createClient()
+async function PowerContent() {
+  const entries = await getPowerEntries()
+  return <PowerClient initialEntries={entries} />
+}
 
-  const { data: entries } = await supabase
-    .from('power_account_entries')
-    .select('*')
-    .order('entry_year', { ascending: true })
-    .order('created_at', { ascending: true })
-
-  return <PowerClient initialEntries={entries ?? []} />
+export default function PowerPage() {
+  return (
+    <Suspense fallback={null}>
+      <PowerContent />
+    </Suspense>
+  )
 }
