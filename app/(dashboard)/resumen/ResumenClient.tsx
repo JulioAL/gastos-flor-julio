@@ -14,6 +14,8 @@ interface Props {
   months: BudgetMonth[]
   expenses: PersonalExpense[]
   allExpenses: PersonalExpense[]
+  myUserId: string
+  isJulio: boolean
 }
 
 function isHogarPending(e: PersonalExpense): boolean {
@@ -44,7 +46,7 @@ function Card({ title, children, noPad = false }: { title: string; children: Rea
   )
 }
 
-export default function ResumenClient({ months, expenses, allExpenses }: Props) {
+export default function ResumenClient({ months, expenses, allExpenses, myUserId, isJulio }: Props) {
   const supabase = createClient()
   const currentMonth = new Date().getMonth() + 1
   const defaultMonth = months.find(m => m.month === currentMonth) ?? months[months.length - 1]
@@ -124,6 +126,38 @@ export default function ResumenClient({ months, expenses, allExpenses }: Props) 
     }
     if (pending > 0) r['_pending'] = pending
     return r
+  }, [allMonthExpenses])
+
+  const pendingByAccount = useMemo(() => {
+    const r: Record<string, number> = {}
+    for (const e of allMonthExpenses) {
+      if (e.corte_id !== null) continue
+      if (isHogarPending(e)) continue
+      for (const group of CORTE_ACCOUNT_GROUPS) {
+        for (const col of group.expenseColumns) {
+          const val = (e[col as keyof PersonalExpense] as number | null) ?? 0
+          if (val > 0) r[group.accountKey] = (r[group.accountKey] ?? 0) + val
+        }
+      }
+    }
+    return r
+  }, [allMonthExpenses])
+
+  const pendingByUser = useMemo(() => {
+    const byUser: Record<string, Record<string, number>> = {}
+    for (const e of allMonthExpenses) {
+      if (e.corte_id !== null) continue
+      if (isHogarPending(e)) continue
+      const uid = e.user_id
+      if (!byUser[uid]) byUser[uid] = {}
+      for (const group of CORTE_ACCOUNT_GROUPS) {
+        for (const col of group.expenseColumns) {
+          const val = (e[col as keyof PersonalExpense] as number | null) ?? 0
+          if (val > 0) byUser[uid][group.accountKey] = (byUser[uid][group.accountKey] ?? 0) + val
+        }
+      }
+    }
+    return byUser
   }, [allMonthExpenses])
 
 
@@ -260,29 +294,89 @@ export default function ResumenClient({ months, expenses, allExpenses }: Props) 
           <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--t3)' }}>Cuentas Scotiabank</p>
           <div className="grid grid-cols-2 gap-3">
             {ACCOUNTS.map(acc => {
-              const real = acc.key === 'power' ? powerTotal : (realByAccount[acc.key] ?? 0)
-              const budget = acc.key === 'power' ? 0 : (scotByAccount[acc.key] ?? 0)
-              const pct = budget > 0 ? real / budget : 0
-              const over = pct >= 1, close = pct >= 0.85
+              const isPower = acc.key === 'power'
+              const accountBalance = isPower ? powerTotal : (scotByAccount[acc.key] ?? 0)
+              const gastos = pendingByAccount[acc.key] ?? 0
+              const afterCorte = accountBalance - gastos
+              const isNegative = !isPower && afterCorte < 0
+              const myLabel = isJulio ? 'Julio' : 'Flor'
+              const otherLabel = isJulio ? 'Flor' : 'Julio'
+              const myPending = pendingByUser[myUserId]?.[acc.key] ?? 0
+              const otherUserId = Object.keys(pendingByUser).find(uid => uid !== myUserId)
+              const otherPending = otherUserId ? (pendingByUser[otherUserId]?.[acc.key] ?? 0) : 0
+              const hasAnyPending = myPending > 0 || otherPending > 0
+              const borderColor = isNegative
+                ? 'color-mix(in oklch, var(--red) 45%, var(--border))'
+                : 'var(--border)'
               return (
-                <div key={acc.key} className="rounded-2xl p-3" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                  <p className="text-xs font-medium mb-1" style={{ color: 'var(--t3)' }}>{acc.label}</p>
-                  <p className="font-mono font-bold text-base leading-tight" style={{ color: 'var(--t)' }}>{fmt(real)}</p>
-                  {budget > 0 && (
+                <div key={acc.key} className="rounded-2xl p-3 flex flex-col gap-2.5"
+                  style={{ background: 'var(--surface)', border: `1px solid ${borderColor}` }}>
+
+                  {/* Account name + excede badge */}
+                  <div className="flex items-center justify-between gap-1">
+                    <p className="text-xs font-semibold truncate" style={{ color: 'var(--t3)' }}>{acc.label}</p>
+                    {isNegative && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                        style={{ background: 'color-mix(in oklch, var(--red) 12%, transparent)', color: 'var(--red)' }}>
+                        Excede
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Real balance */}
+                  <div>
+                    <p className="text-[10px] font-medium uppercase tracking-wide mb-0.5" style={{ color: 'var(--t3)' }}>
+                      {isPower ? 'Ahorros e inversiones' : 'Saldo actual'}
+                    </p>
+                    <p className="font-mono font-bold text-base leading-none" style={{ color: 'var(--t)' }}>{fmt(accountBalance)}</p>
+                  </div>
+
+                  {/* Pending breakdown + tras corte */}
+                  {hasAnyPending && (
                     <>
-                      <div className="mt-2" style={{ height: 6, borderRadius: 4, background: 'var(--border)', overflow: 'hidden' }}>
-                        <div style={{
-                          height: '100%', borderRadius: 4,
-                          width: `${Math.min(pct, 1) * 100}%`,
-                          background: over ? 'var(--red)' : close ? 'var(--amber)' : 'var(--accent)',
-                          transition: 'width .3s',
-                        }} />
+                      <div className="space-y-1">
+                        {myPending > 0 && (
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0"
+                                style={{ background: 'var(--asoft)', color: 'var(--atext)' }}>
+                                {myLabel[0]}
+                              </span>
+                              <span className="text-xs" style={{ color: 'var(--t2)' }}>{myLabel}</span>
+                            </div>
+                            <span className="text-xs font-mono" style={{ color: 'var(--t2)' }}>−{fmt(myPending)}</span>
+                          </div>
+                        )}
+                        {otherPending > 0 && (
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0"
+                                style={{ background: 'var(--asoft)', color: 'var(--atext)' }}>
+                                {otherLabel[0]}
+                              </span>
+                              <span className="text-xs" style={{ color: 'var(--t2)' }}>{otherLabel}</span>
+                            </div>
+                            <span className="text-xs font-mono" style={{ color: 'var(--t2)' }}>−{fmt(otherPending)}</span>
+                          </div>
+                        )}
                       </div>
-                      <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>de {fmt(budget)}</p>
+
+                      <div className="rounded-xl px-2.5 py-2"
+                        style={{ background: isNegative
+                          ? 'color-mix(in oklch, var(--red) 8%, transparent)'
+                          : 'color-mix(in oklch, var(--accent) 8%, transparent)' }}>
+                        <p className="text-[10px] font-medium uppercase tracking-wide mb-0.5" style={{ color: 'var(--t3)' }}>Tras corte</p>
+                        <p className="font-mono font-bold text-sm leading-none"
+                          style={{ color: isNegative ? 'var(--red)' : 'var(--accent)' }}>
+                          {fmt(afterCorte)}
+                        </p>
+                        {isNegative && (
+                          <p className="text-[10px] mt-1 font-medium" style={{ color: 'var(--red)' }}>
+                            Excede en {fmt(Math.abs(afterCorte))}
+                          </p>
+                        )}
+                      </div>
                     </>
-                  )}
-                  {acc.key === 'power' && (
-                    <p className="text-xs mt-1 truncate" style={{ color: 'var(--t3)' }}>Ahorros e inversiones</p>
                   )}
                 </div>
               )

@@ -102,7 +102,8 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
   const [expenses, setExpenses] = useState<PersonalExpense[]>(initialExpenses)
   const [filterMonth, setFilterMonth] = useState<number>(0)
   const [filterAccount, setFilterAccount] = useState<string>('all')
-  const [filterType, setFilterType] = useState<string>('pendiente')
+  const [filterType, setFilterType] = useState<string>('all')
+  const [filterPendiente, setFilterPendiente] = useState(true)
   const [filterAccountType, setFilterAccountType] = useState<string>('all')
   const [filterRegDate, setFilterRegDate] = useState('')
   const [filterCategory, setFilterCategory] = useState<string>('all')
@@ -129,7 +130,7 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
     if (filterType === 'hogar' && clas !== 'hogar' && clas !== 'hogar_sin_cuenta') return false
     if (filterType === 'sin_clasificar' && clas !== 'sin_clasificar') return false
     if (filterType === 'sin_cuenta' && clas !== 'hogar_sin_cuenta') return false
-    if (filterType === 'pendiente' && e.corte_id !== null) return false
+    if (filterPendiente && e.corte_id !== null) return false
     if (filterRegDate && e.created_at?.slice(0, 10) !== filterRegDate) return false
     if (filterCategory !== 'all' && e.category !== filterCategory) return false
     if (filterAccountType !== 'all' && (e.account_type ?? 'credito') !== filterAccountType) return false
@@ -340,8 +341,18 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
 
       {/* Filter type pills */}
       <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+        <button
+          onClick={() => setFilterPendiente(p => !p)}
+          className="px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap border transition-all flex-shrink-0 flex items-center gap-1.5"
+          style={filterPendiente
+            ? { background: 'var(--accent)', color: '#fff', borderColor: 'transparent' }
+            : { borderColor: 'var(--border)', color: 'var(--t2)', background: 'var(--surface)' }}
+        >
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: filterPendiente ? '#fff' : 'var(--t3)', display: 'inline-block', flexShrink: 0 }} />
+          Pendientes
+        </button>
+        <div style={{ width: 1, background: 'var(--border)', alignSelf: 'stretch', flexShrink: 0 }} />
         {([
-          { id: 'pendiente',    label: 'Pendientes' },
           { id: 'all',          label: 'Todos' },
           { id: 'personal',     label: 'Personal' },
           { id: 'flor_me_debe', label: deudaLabel },

@@ -18,11 +18,16 @@ export default async function ResumenPage() {
     admin.from('personal_expenses').select('*').eq('year', 2026).order('date'),
   ])
 
+  const userEmail = user?.email ?? ''
+  const isJulio = userEmail.toLowerCase().includes('julio')
+
   return (
     <ResumenClient
       months={months ?? []}
       expenses={myExpenses ?? []}
       allExpenses={allExpenses ?? []}
+      myUserId={user!.id}
+      isJulio={isJulio}
     />
   )
 }

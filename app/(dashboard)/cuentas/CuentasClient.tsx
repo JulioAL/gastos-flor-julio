@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { MONTH_NAMES, ACCOUNTS } from '@/lib/utils/accounts'
-import type { BudgetMonth, BudgetExpense } from '@/lib/supabase/types'
+import { MONTH_NAMES, ACCOUNTS, computeCorteAccountTotals } from '@/lib/utils/accounts'
+import type { BudgetMonth, BudgetExpense, PersonalExpense } from '@/lib/supabase/types'
 
 const DIST_COLS = [
   { key: 'julio',           label: 'Julio' },
@@ -79,6 +79,7 @@ function makeEmptyDistRow(gasto_egreso: string, sort_order: number, tempId: stri
 interface Props {
   initialMonths: BudgetMonth[]
   powerTotal: number
+  allExpenses: PersonalExpense[]
 }
 
 const INCOME_SOURCES = [
@@ -149,7 +150,7 @@ function getDeudaMonths(months: BudgetMonth[], selectedMonthId: string): BudgetM
     .sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month)
 }
 
-export default function CuentasClient({ initialMonths, powerTotal }: Props) {
+export default function CuentasClient({ initialMonths, powerTotal, allExpenses }: Props) {
   const supabase = createClient()
   const [months, setMonths] = useState<BudgetMonth[]>(initialMonths)
   const currentMonth = new Date().getMonth() + 1
@@ -879,6 +880,12 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
     appliedByAccount[acc.key] = row?.amount ?? 0
   }
 
+  const selectedMonthNum = months.find(m => m.id === selectedMonthId)?.month
+  const realByAccount = useMemo(() => {
+    const monthExp = allExpenses.filter(e => new Date(e.date + 'T00:00:00').getMonth() + 1 === selectedMonthNum)
+    return computeCorteAccountTotals(monthExp as Record<string, number | null | string | boolean>[])
+  }, [allExpenses, selectedMonthNum])
+
   const fmt = (n: number) => `S/ ${n.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`
   const fmtAmt = (n: number) => n % 1 === 0
     ? n.toLocaleString('es-PE')
@@ -1018,6 +1025,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                 {ACCOUNTS.map(acc => {
                   const amt = acc.key === 'power' ? powerTotal : (byAccount[acc.key] ?? 0)
                   const applied = acc.key === 'power' ? 0 : (appliedByAccount[acc.key] ?? 0)
+                  const real = acc.key === 'power' ? 0 : (realByAccount[acc.key] ?? 0)
                   const isEditing = editingAccountKey === acc.key
                   return (
                     <div key={acc.key} className="rounded-2xl p-3 flex flex-col gap-1.5" style={{background:'color-mix(in oklch, var(--asoft) 45%, var(--surface))'}}>
@@ -1049,6 +1057,9 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                           onClick={() => { if (isSelectedMonthLocked) return; setEditingAccountKey(acc.key); setEditAccountValue(amt.toString()) }}>
                           {fmt(amt)}
                         </p>
+                      )}
+                      {amt === 0 && real > 0 && (
+                        <p className="text-xs" style={{color:'var(--red)'}}>Excede en {fmt(real)}</p>
                       )}
                     </div>
                   )
