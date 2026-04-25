@@ -9,6 +9,8 @@ interface Props {
   pendingExpenses: PersonalExpense[]
   cortes: CorteWithTotals[]
   userId: string
+  currentUserName: string
+  otherUserName: string
   budgetByAccount: Record<string, number>
   powerTotal: number
   budgetMonthId: string | null
@@ -50,7 +52,11 @@ function formatDate(dateStr: string): string {
   return `${parseInt(d)} ${months[parseInt(m) - 1]}`
 }
 
-export default function CorteClient({ pendingExpenses, cortes, userId, budgetByAccount, powerTotal, budgetMonthId }: Props) {
+export default function CorteClient({ pendingExpenses, cortes, userId, currentUserName, otherUserName, budgetByAccount, powerTotal, budgetMonthId }: Props) {
+
+  function whoName(expenseUserId: string): string {
+    return expenseUserId === userId ? currentUserName : otherUserName
+  }
   const supabase = createClient()
 
   const [localPending, setLocalPending] = useState<PersonalExpense[]>(pendingExpenses)
@@ -401,19 +407,34 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
                           </tr>
                         </thead>
                         <tbody>
-                          {expensesInGroup.map((e, i) => (
-                            <tr key={e.id} style={{ background: 'var(--surface)', borderTop: i > 0 ? '1px solid var(--border)' : undefined }}>
-                              <td className="px-3 py-2 whitespace-nowrap" style={{ color: 'var(--t3)' }}>
-                                {formatDate(e.date)}
-                              </td>
-                              <td className="px-3 py-2" style={{ color: 'var(--t)' }}>
-                                {e.description}
-                              </td>
-                              <td className="px-3 py-2 text-right font-medium whitespace-nowrap" style={{ color: 'var(--t)' }}>
-                                S/ {fmt(getExpenseAmountForGroup(e, group.expenseColumns))}
-                              </td>
-                            </tr>
-                          ))}
+                          {expensesInGroup.map((e, i) => {
+                            const who = whoName(e.user_id)
+                            const isFlor = who === 'Flor'
+                            return (
+                              <tr key={e.id} style={{ background: 'var(--surface)', borderTop: i > 0 ? '1px solid var(--border)' : undefined }}>
+                                <td className="px-3 py-2 whitespace-nowrap" style={{ color: 'var(--t3)' }}>
+                                  {formatDate(e.date)}
+                                </td>
+                                <td className="px-3 py-2" style={{ color: 'var(--t)' }}>
+                                  <span className="flex items-center gap-1.5">
+                                    {e.description}
+                                    {who && (
+                                      <span className="text-[10px] font-semibold px-1 py-0.5 rounded"
+                                        style={{
+                                          background: isFlor ? 'color-mix(in oklch, oklch(60% 0.14 60) 15%, transparent)' : 'color-mix(in oklch, oklch(60% 0.14 345) 15%, transparent)',
+                                          color: isFlor ? 'oklch(50% 0.14 60)' : 'oklch(50% 0.14 345)',
+                                        }}>
+                                        {who}
+                                      </span>
+                                    )}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-2 text-right font-medium whitespace-nowrap" style={{ color: 'var(--t)' }}>
+                                  S/ {fmt(getExpenseAmountForGroup(e, group.expenseColumns))}
+                                </td>
+                              </tr>
+                            )
+                          })}
                         </tbody>
                         <tfoot>
                           <tr className="font-semibold text-sm" style={{ background: 'var(--asoft)', borderTop: '1px solid var(--border)' }}>
@@ -557,14 +578,29 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
                       className="flex-1 flex items-center justify-between px-4 py-3 text-left transition"
                     >
                       <div>
-                        <span className="text-sm font-medium" style={{ color: 'var(--t)' }}>
-                          {formatDate(corte.settled_date)} — {MONTH_NAMES[corte.month]} {corte.year}
-                        </span>
-                        {corte.notes && (
-                          <span className="ml-2 text-xs" style={{ color: 'var(--t3)' }}>
-                            {corte.notes}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-medium" style={{ color: 'var(--t)' }}>
+                            {formatDate(corte.settled_date)} — {MONTH_NAMES[corte.month]} {corte.year}
                           </span>
-                        )}
+                          {corte.created_by && (() => {
+                            const who = whoName(corte.created_by)
+                            const isFlor = who === 'Flor'
+                            return (
+                              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
+                                style={{
+                                  background: isFlor ? 'color-mix(in oklch, oklch(60% 0.14 60) 15%, transparent)' : 'color-mix(in oklch, oklch(60% 0.14 345) 15%, transparent)',
+                                  color: isFlor ? 'oklch(50% 0.14 60)' : 'oklch(50% 0.14 345)',
+                                }}>
+                                {who}
+                              </span>
+                            )
+                          })()}
+                          {corte.notes && (
+                            <span className="text-xs" style={{ color: 'var(--t3)' }}>
+                              {corte.notes}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="text-sm font-bold" style={{ color: 'var(--t)' }}>
@@ -620,17 +656,30 @@ export default function CorteClient({ pendingExpenses, cortes, userId, budgetByA
                                         S/ {fmt(t.total_amount)}
                                       </td>
                                     </tr>
-                                    {isAccountExpanded && groupExpenses.map(e => (
-                                      <tr key={e.id} style={{ background: 'var(--bg2)', borderTop: '1px solid var(--border)' }}>
-                                        <td className="pl-8 pr-4 py-1.5 text-xs" style={{ color: 'var(--t2)' }}>
-                                          <span className="mr-2" style={{ color: 'var(--t3)' }}>{formatDate(e.date)}</span>
-                                          {e.description}
-                                        </td>
-                                        <td className="px-4 py-1.5 text-right text-xs" style={{ color: 'var(--t2)' }}>
-                                          S/ {fmt(group ? getExpenseAmountForGroup(e, group.expenseColumns) : 0)}
-                                        </td>
-                                      </tr>
-                                    ))}
+                                    {isAccountExpanded && groupExpenses.map(e => {
+                                      const who = whoName(e.user_id)
+                                      const isFlor = who === 'Flor'
+                                      return (
+                                        <tr key={e.id} style={{ background: 'var(--bg2)', borderTop: '1px solid var(--border)' }}>
+                                          <td className="pl-8 pr-4 py-1.5 text-xs" style={{ color: 'var(--t2)' }}>
+                                            <span className="mr-2" style={{ color: 'var(--t3)' }}>{formatDate(e.date)}</span>
+                                            {e.description}
+                                            {who && (
+                                              <span className="ml-1.5 text-[10px] font-semibold px-1 py-0.5 rounded"
+                                                style={{
+                                                  background: isFlor ? 'color-mix(in oklch, oklch(60% 0.14 60) 15%, transparent)' : 'color-mix(in oklch, oklch(60% 0.14 345) 15%, transparent)',
+                                                  color: isFlor ? 'oklch(50% 0.14 60)' : 'oklch(50% 0.14 345)',
+                                                }}>
+                                                {who}
+                                              </span>
+                                            )}
+                                          </td>
+                                          <td className="px-4 py-1.5 text-right text-xs" style={{ color: 'var(--t2)' }}>
+                                            S/ {fmt(group ? getExpenseAmountForGroup(e, group.expenseColumns) : 0)}
+                                          </td>
+                                        </tr>
+                                      )
+                                    })}
                                   </Fragment>
                                 )
                               })}

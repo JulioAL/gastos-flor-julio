@@ -14,6 +14,9 @@ export default async function CortePage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  const currentUserName = (user.email ?? user.user_metadata?.full_name ?? '').toLowerCase().includes('julio') ? 'Julio' : 'Flor'
+  const otherUserName = currentUserName === 'Julio' ? 'Flor' : 'Julio'
+
   const currentMonth = new Date().getMonth() + 1
   const currentYear = new Date().getFullYear()
 
@@ -56,6 +59,8 @@ export default async function CortePage() {
       pendingExpenses={pendingExpenses ?? []}
       cortes={cortes ?? []}
       userId={user.id}
+      currentUserName={currentUserName}
+      otherUserName={otherUserName}
       budgetByAccount={budgetByAccount}
       powerTotal={powerTotal}
       budgetMonthId={(budgetMonth as { id: string } | null)?.id ?? null}

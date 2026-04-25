@@ -1058,9 +1058,7 @@ export default function CuentasClient({ initialMonths, powerTotal, allExpenses }
                           {fmt(amt)}
                         </p>
                       )}
-                      {amt === 0 && real > 0 && (
-                        <p className="text-xs" style={{color:'var(--red)'}}>Excede en {fmt(real)}</p>
-                      )}
+
                     </div>
                   )
                 })}
