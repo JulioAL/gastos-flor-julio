@@ -192,9 +192,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
   // Uses soft-delete (hidden=true) so deleted rows are never re-seeded.
   useEffect(() => {
     if (!selectedMonthId) return
-    /* eslint-disable react-hooks/set-state-in-effect */
     setDistLoading(true)
-    /* eslint-enable react-hooks/set-state-in-effect */
     async function load() {
       const [distResult, deudaResult] = await Promise.all([
         // Fetch ALL rows for this month (including hidden) to know what's been deleted
@@ -322,9 +320,7 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
 
   useEffect(() => {
     if (!selectedMonthId) return
-    /* eslint-disable react-hooks/set-state-in-effect */
     setLoading(true)
-    /* eslint-enable react-hooks/set-state-in-effect */
     supabase.from('budget_expenses').select('*').eq('budget_month_id', selectedMonthId)
       .then(({ data }) => {
         setExpenses(data ?? [])
@@ -1557,10 +1553,8 @@ export default function CuentasClient({ initialMonths, powerTotal }: Props) {
                                 style={{border:'1px solid var(--accent)',background:'var(--surface)',color:'var(--t)',outline:'none'}}
                                 value={editDistCellValue}
                                 onChange={e => setEditDistCellValue(e.target.value)}
-                                /* eslint-disable react-hooks/refs */
                                 onBlur={() => commitDistCell(row.id, 'gasto_egreso', editDistCellValue)}
                                 onKeyDown={e => { if (e.key === 'Enter') commitDistCell(row.id, 'gasto_egreso', editDistCellValue); if (e.key === 'Escape') setEditingDistCell(null) }}
-                                /* eslint-enable react-hooks/refs */
                               />
                             ) : (
                               <span className={isSelectedMonthLocked ? '' : 'cursor-pointer font-medium'}

@@ -302,14 +302,6 @@ export default function GastosClient({ initialExpenses, userId, isJulio }: Props
     viajes: '#0ea5e9', familia: '#fb923c', otros: '#94a3b8',
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const CLAS_STYLES = {
-    personal:         { bg: 'bg-purple-100 dark:bg-purple-900/40', text: 'text-purple-700 dark:text-purple-300', label: 'Personal' },
-    flor_me_debe:     { bg: 'bg-pink-100 dark:bg-pink-900/40',     text: 'text-pink-700 dark:text-pink-300',     label: deudaLabel },
-    hogar:            { bg: 'bg-blue-100 dark:bg-blue-900/40',      text: 'text-blue-700 dark:text-blue-300',     label: 'Hogar' },
-    hogar_sin_cuenta: { bg: 'bg-orange-100 dark:bg-orange-900/40',  text: 'text-orange-700 dark:text-orange-300', label: 'Hogar · sin cuenta' },
-    sin_clasificar:   { bg: 'bg-red-100 dark:bg-red-900/40',        text: 'text-red-700 dark:text-red-300',       label: 'Sin clasificar' },
-  }
 
   return (
     <div className="space-y-4 pb-32 md:pb-8">
