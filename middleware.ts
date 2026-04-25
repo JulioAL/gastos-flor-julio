@@ -25,15 +25,30 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  const isLoginPath = request.nextUrl.pathname.startsWith('/login')
+  const isAuthPath = request.nextUrl.pathname.startsWith('/auth')
+
   // Redirect unauthenticated users to login
-  if (!user && !request.nextUrl.pathname.startsWith('/login') && !request.nextUrl.pathname.startsWith('/auth')) {
+  if (!user && !isLoginPath && !isAuthPath) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
+  // Enforce email allowlist — sign out and redirect if user is not authorized
+  if (user) {
+    const allowed = (process.env.ALLOWED_EMAILS ?? '').split(',').map(e => e.trim().toLowerCase())
+    if (allowed.length > 0 && !allowed.includes((user.email ?? '').toLowerCase())) {
+      await supabase.auth.signOut()
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      url.searchParams.set('error', 'unauthorized')
+      return NextResponse.redirect(url)
+    }
+  }
+
   // Redirect authenticated users away from login
-  if (user && request.nextUrl.pathname === '/login') {
+  if (user && isLoginPath) {
     const url = request.nextUrl.clone()
     url.pathname = '/resumen'
     return NextResponse.redirect(url)
