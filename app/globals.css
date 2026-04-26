@@ -74,6 +74,34 @@
   --red:    oklch(58% 0.18 25);
   --amber:  oklch(70% 0.14 75);
 }
+[data-theme="amarillo"] {
+  --bg:     oklch(98% 0.025 100);
+  --bg2:    oklch(95% 0.04 100);
+  --surface:oklch(99.7% 0.01 100);
+  --border: oklch(90% 0.035 100);
+  --accent: oklch(64% 0.11 85);
+  --asoft:  oklch(94% 0.06 100);
+  --atext:  oklch(38% 0.08 80);
+  --t:      oklch(20% 0.02 80);
+  --t2:     oklch(46% 0.02 85);
+  --t3:     oklch(64% 0.018 90);
+  --red:    oklch(58% 0.18 25);
+  --amber:  oklch(70% 0.14 75);
+}
+[data-theme="beige"] {
+  --bg:     oklch(96% 0.012 75);
+  --bg2:    oklch(92.5% 0.018 75);
+  --surface:oklch(99% 0.006 75);
+  --border: oklch(87% 0.02 75);
+  --accent: oklch(54% 0.06 60);
+  --asoft:  oklch(92% 0.025 70);
+  --atext:  oklch(38% 0.05 55);
+  --t:      oklch(20% 0.015 55);
+  --t2:     oklch(46% 0.018 55);
+  --t3:     oklch(64% 0.014 55);
+  --red:    oklch(58% 0.18 25);
+  --amber:  oklch(70% 0.14 75);
+}
 
 /* Dark mode — fondos y texto iguales para todos los temas */
 .dark {
@@ -111,6 +139,16 @@
   --asoft:  oklch(23% 0.08 345);
   --atext:  oklch(78% 0.13 345);
 }
+.dark[data-theme="amarillo"] {
+  --accent: oklch(78% 0.13 92);
+  --asoft:  oklch(24% 0.06 92);
+  --atext:  oklch(86% 0.11 92);
+}
+.dark[data-theme="beige"] {
+  --accent: oklch(72% 0.07 65);
+  --asoft:  oklch(22% 0.025 65);
+  --atext:  oklch(82% 0.05 65);
+}
 
 /* Legacy aliases */
 :root {
@@ -141,8 +179,24 @@ body {
 @media (min-width: 768px) {
   .app-shell {
     display: grid;
-    grid-template-columns: 220px 1fr;
+    grid-template-columns: 72px 1fr;
     height: 100%;
+  }
+}
+@media (min-width: 1280px) {
+  .app-shell {
+    grid-template-columns: 220px 1fr;
+  }
+}
+
+/* ── Content padding (responsive) ───────────────────────────── */
+.content-pad {
+  padding: 16px 16px 100px;
+  max-width: 720px;
+}
+@media (min-width: 768px) {
+  .content-pad {
+    padding: 24px 32px 80px;
   }
 }
 
@@ -153,6 +207,10 @@ body {
 
 /* ── Utility ─────────────────────────────────────────────────── */
 .no-scroll::-webkit-scrollbar { display: none; }
+
+/* details caret rotation */
+details[open] .details-caret { transform: rotate(90deg); }
+.details-caret { transition: transform .2s; }
 .no-scroll { -ms-overflow-style: none; scrollbar-width: none; }
 
 /* ── Theme-aware utility aliases ─────────────────────── */

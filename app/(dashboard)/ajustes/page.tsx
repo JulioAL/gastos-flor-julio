@@ -73,7 +73,7 @@ export default function AjustesPage() {
           <p className="text-sm mb-4" style={{ color: 'var(--t2)' }}>
             Escoge el tema que más te guste. Los colores se aplican a toda la app.
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
             {COLOR_THEMES.map(th => {
               const active = colorTheme === th.id
               return (
@@ -105,12 +105,12 @@ export default function AjustesPage() {
                     <div>
                       <p
                         className="text-sm font-semibold"
-                        style={{ color: active ? th.swatch : 'var(--t)' }}
+                        style={{ color: active ? 'var(--atext)' : 'var(--t)' }}
                       >
                         {th.label}
                       </p>
                       {active && (
-                        <p className="text-xs" style={{ color: th.swatch }}>✓ Activo</p>
+                        <p className="text-xs" style={{ color: 'var(--atext)' }}>✓ Activo</p>
                       )}
                     </div>
                   </div>

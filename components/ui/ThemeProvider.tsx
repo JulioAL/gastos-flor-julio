@@ -3,14 +3,16 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 
 type Theme = 'system' | 'light' | 'dark'
-export type ColorTheme = 'durazno' | 'menta' | 'lavanda' | 'cielo' | 'rosa'
+export type ColorTheme = 'durazno' | 'menta' | 'lavanda' | 'cielo' | 'rosa' | 'amarillo' | 'beige'
 
 export const COLOR_THEMES: { id: ColorTheme; label: string; swatch: string }[] = [
-  { id: 'durazno', label: 'Durazno', swatch: 'oklch(62% 0.14 50)' },
-  { id: 'menta',   label: 'Menta',   swatch: 'oklch(56% 0.13 160)' },
-  { id: 'lavanda', label: 'Lavanda', swatch: 'oklch(58% 0.14 290)' },
-  { id: 'cielo',   label: 'Cielo',   swatch: 'oklch(57% 0.13 225)' },
-  { id: 'rosa',    label: 'Rosa',    swatch: 'oklch(60% 0.14 345)' },
+  { id: 'durazno',  label: 'Durazno',  swatch: 'oklch(62% 0.14 50)' },
+  { id: 'menta',    label: 'Menta',    swatch: 'oklch(56% 0.13 160)' },
+  { id: 'lavanda',  label: 'Lavanda',  swatch: 'oklch(58% 0.14 290)' },
+  { id: 'cielo',    label: 'Cielo',    swatch: 'oklch(57% 0.13 225)' },
+  { id: 'rosa',     label: 'Rosa',     swatch: 'oklch(60% 0.14 345)' },
+  { id: 'amarillo', label: 'Amarillo', swatch: 'oklch(64% 0.11 85)' },
+  { id: 'beige',    label: 'Beige',    swatch: 'oklch(54% 0.06 60)' },
 ]
 
 const ThemeContext = createContext<{

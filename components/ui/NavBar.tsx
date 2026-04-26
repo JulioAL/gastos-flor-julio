@@ -79,7 +79,7 @@ export default function NavBar({ user }: { user: User }) {
 
   return (
     <>
-      {/* ── Sidebar: desktop only ─────────────────────────────── */}
+      {/* ── Sidebar: tablet (icon-only) + desktop (full) ─────── */}
       <aside
         className="hidden md:flex flex-col"
         style={{
@@ -89,50 +89,52 @@ export default function NavBar({ user }: { user: User }) {
           overflow: 'hidden',
         }}
       >
-        {/* Logo */}
-        <div style={{ padding: '24px 20px 16px' }}>
-          <div className="flex items-center gap-2.5">
-            <div
-              className="flex items-center justify-center w-8 h-8 rounded-xl text-white text-sm font-bold flex-shrink-0"
-              style={{ background: 'var(--accent)' }}
-            >
-              F
-            </div>
-            <div>
-              <p className="text-sm font-bold leading-tight" style={{ color: 'var(--t)' }}>Flor &amp; Julio</p>
-              <p className="text-xs" style={{ color: 'var(--t3)' }}>Gastos 2026</p>
-            </div>
+        {/* Logo — badge always, text only on xl */}
+        <div
+          className="flex items-center xl:px-5"
+          style={{ padding: '20px 0 14px', justifyContent: 'center' }}
+        >
+          <div
+            className="flex items-center justify-center w-8 h-8 rounded-xl text-white text-sm font-bold flex-shrink-0"
+            style={{ background: 'var(--accent)' }}
+          >
+            F
+          </div>
+          <div className="hidden xl:block ml-2.5">
+            <p className="text-sm font-bold leading-tight" style={{ color: 'var(--t)' }}>Flor &amp; Julio</p>
+            <p className="text-xs" style={{ color: 'var(--t3)' }}>Gastos 2026</p>
           </div>
         </div>
 
-        {/* Nav items */}
-        <nav style={{ padding: '0 12px', flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {/* Nav items — icon-only on tablet, icon+label on desktop */}
+        <nav style={{ padding: '0 8px', flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }} className="xl:px-3">
           {TABS.map(tab => {
             const active = pathname.startsWith(tab.href)
             return (
               <Link
                 key={tab.href}
                 href={tab.href}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors"
+                className="flex items-center justify-center xl:justify-start gap-3 xl:px-3 py-2.5 rounded-xl text-sm font-medium transition-colors"
                 style={
                   active
                     ? { background: 'var(--asoft)', color: 'var(--atext)' }
                     : { color: 'var(--t2)' }
                 }
+                title={tab.label}
               >
                 <span style={{ color: active ? 'var(--accent)' : 'var(--t3)', flexShrink: 0 }}>
                   {tab.icon}
                 </span>
-                {tab.label}
+                <span className="hidden xl:block">{tab.label}</span>
               </Link>
             )
           })}
         </nav>
 
-        {/* User footer */}
+        {/* User footer — avatar always, info only on xl */}
         <div
-          className="flex items-center gap-2.5"
-          style={{ padding: '16px 20px', borderTop: '1px solid var(--border)' }}
+          className="flex items-center justify-center xl:justify-start xl:gap-2.5"
+          style={{ padding: '14px 0', borderTop: '1px solid var(--border)' }}
         >
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
@@ -140,7 +142,7 @@ export default function NavBar({ user }: { user: User }) {
           >
             {initials}
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="hidden xl:block flex-1 min-w-0 ml-0">
             <p className="text-sm font-medium truncate" style={{ color: 'var(--t)' }}>{userName}</p>
             <button
               onClick={signOut}

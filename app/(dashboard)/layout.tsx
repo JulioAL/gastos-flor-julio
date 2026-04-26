@@ -27,7 +27,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             height: '100%',
           }}
         >
-          <div style={{ paddingTop: 24, paddingBottom: 100, paddingLeft: 32, paddingRight: 32, maxWidth: 720 }}>
+          <div className="content-pad">
             {children}
           </div>
         </main>
